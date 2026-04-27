@@ -191,10 +191,10 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months):
             "delay":    delay,
             "past_due": past_due,
             "total":    total,
-            # % OTD with Past Due    = Ontime / Total
+            # % OTD with Past Due    = Past Due / (Ontime + Delay) * 100
             # % OTD without Past Due = (Delay + Ontime) / Total
-            "otd_with":    round(ontime             / total * 100, 1) if total else 0.0,
-            "otd_without": round((delay + ontime)   / total * 100, 1) if total else 0.0,
+            "otd_with":    round(past_due / (ontime + delay) * 100, 1) if (ontime + delay) else 0.0,
+            "otd_without": round((delay + ontime) / total * 100, 1) if total else 0.0,
         }
 
     # Grand-total column
@@ -213,7 +213,7 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months):
         {
             "Metric": "% OTD with Past Due",
             **{m: month_stats[m]["otd_with"] for m in month_order},
-            "Total": pct(t_ontime, t_all),
+            "Total": pct(t_past_due, t_ontime + t_delay),
         },
         {
             "Metric": "% OTD without Past Due",
