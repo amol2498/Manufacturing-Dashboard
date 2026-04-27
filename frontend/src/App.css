@@ -1,0 +1,440 @@
+/* ────────────────────────────────────────
+   Global reset & base
+──────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f0f2f5;
+  color: #222;
+  font-size: 13px;
+}
+
+/* ────────────────────────────────────────
+   App shell
+──────────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: #1e3a5f;
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.header-sub {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 2px;
+  display: block;
+}
+
+.header-badge {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── Main layout ── */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 54px);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px;
+  min-width: 200px;
+  background: #fff;
+  border-right: 1px solid #dde1e7;
+  overflow-y: auto;
+  padding: 16px 14px;
+  flex-shrink: 0;
+}
+
+/* ── Content area ── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ────────────────────────────────────────
+   Filter Panel
+──────────────────────────────────────── */
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.filter-header h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #1e3a5f;
+}
+
+.clear-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #666;
+  transition: background 0.15s;
+}
+
+.clear-btn:hover {
+  background: #f0f2f5;
+}
+
+.filter-group {
+  margin-bottom: 14px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.filter-group:last-child {
+  border-bottom: none;
+}
+
+.filter-group h4 {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.filter-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0;
+  cursor: pointer;
+  font-size: 12px;
+  color: #444;
+  line-height: 1.3;
+}
+
+.filter-option input[type="checkbox"] {
+  cursor: pointer;
+  margin-top: 1px;
+  flex-shrink: 0;
+  accent-color: #1e3a5f;
+}
+
+.filter-error {
+  color: #dc2626;
+  font-size: 11px;
+  padding: 8px;
+  background: #fef2f2;
+  border-radius: 4px;
+  border: 1px solid #fecaca;
+}
+
+/* ────────────────────────────────────────
+   Tab bar
+──────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid #dde1e7;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px 7px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  min-width: 110px;
+}
+
+.tab-btn:hover {
+  background: #f0f2f5;
+  color: #1e3a5f;
+}
+
+.tab-btn.active {
+  border-bottom-color: #1e3a5f;
+  background: #f5f8ff;
+}
+
+.tab-num {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+}
+
+.tab-btn.active .tab-num {
+  color: #1e3a5f;
+}
+
+.tab-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  margin-top: 1px;
+}
+
+.tab-btn.active .tab-label {
+  color: #1e3a5f;
+}
+
+/* ────────────────────────────────────────
+   Summary bar
+──────────────────────────────────────── */
+.summary-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.summary-badge {
+  background: #1e3a5f;
+  color: #fff;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.summary-badge strong {
+  font-size: 15px;
+  margin-left: 4px;
+}
+
+/* ────────────────────────────────────────
+   Section cards
+──────────────────────────────────────── */
+.section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f2f5;
+}
+
+/* ────────────────────────────────────────
+   Pivot Table
+──────────────────────────────────────── */
+.table-container {
+  overflow-x: auto;
+}
+
+.pivot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pivot-table thead th {
+  background: #1e3a5f;
+  color: #fff;
+  padding: 9px 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pivot-table tbody td {
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.pivot-table tbody tr:hover {
+  background: #f8faff;
+}
+
+.pivot-table .grand-total-row td {
+  background: #eef2fa;
+  font-weight: 700;
+  border-top: 2px solid #1e3a5f;
+}
+
+.col-stage {
+  text-align: left;
+  min-width: 170px;
+}
+
+.col-number {
+  text-align: right;
+  min-width: 80px;
+}
+
+/* Total column – slightly highlighted */
+.col-total-header {
+  background: #16305a !important;
+  border-left: 2px solid rgba(255,255,255,0.3);
+}
+
+.col-total-cell {
+  font-weight: 700;
+  border-left: 2px solid #dde1e7;
+  background: #f5f8ff;
+}
+
+.grand-total-row .col-total-cell {
+  background: #dce8ff;
+}
+
+
+/* ────────────────────────────────────────
+   Chart
+──────────────────────────────────────── */
+.chart-container {
+  width: 100%;
+}
+
+/* ────────────────────────────────────────
+   Dummy Tab
+──────────────────────────────────────── */
+.dummy-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 50px 20px;
+  border: 2px dashed #e0e0e0;
+  border-radius: 6px;
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────
+   States
+──────────────────────────────────────── */
+.loading, .no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.error-msg {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 14px 18px;
+  font-size: 13px;
+}
+
+/* ────────────────────────────────────────
+   Upload Widget (header)
+──────────────────────────────────────── */
+.upload-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.28);
+}
+
+.upload-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.upload-status {
+  font-size: 11px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-status--success { color: #86efac; }
+.upload-status--error   { color: #fca5a5; }
+
+/* ────────────────────────────────────────
+   Pivot Table 4 — OTD Projection
+──────────────────────────────────────── */
+.col-metric {
+  text-align: left;
+  min-width: 200px;
+  white-space: nowrap;
+}
+
+.pivot-table-4 .p4-divider td {
+  border-top: 2px solid #1e3a5f;
+}
+
+.pivot-table-4 .p4-total-row td {
+  background: #eef2fa;
+  font-weight: 700;
+}
+
+.pivot-table-4 .p4-pct-row td {
+  background: #f0f8ff;
+  font-weight: 600;
+  color: #1e3a5f;
+}

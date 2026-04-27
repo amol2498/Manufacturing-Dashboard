@@ -1,0 +1,88 @@
+import { useState } from 'react'
+import FilterPanel from './components/FilterPanel'
+import Tab1 from './components/Tab1'
+import DummyTab from './components/DummyTab'
+import Tab4 from './components/Tab4'
+import UploadWidget from './components/UploadWidget'
+import './App.css'
+
+/**
+ * App – Root component (MVC View layer).
+ * Manages:
+ *   - Active tab selection
+ *   - Global filter state (passed down to FilterPanel and Tab components)
+ */
+
+const TABS = [
+  { id: 1, label: 'PO Lines Analysis' },
+  { id: 2, label: 'Pivot Table 2' },
+  { id: 3, label: 'Pivot Table 3' },
+  { id: 4, label: 'Pivot Table 4' },
+  { id: 5, label: 'Pivot Table 5' },
+]
+
+const INITIAL_FILTERS = {
+  stages: [],
+  ontime_delay: [],
+  delay_category: [],
+  months: [],
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState(1)
+  const [filters, setFilters] = useState(INITIAL_FILTERS)
+  const [filterKey, setFilterKey] = useState(0)
+
+  const handleUploadSuccess = () => {
+    setFilters(INITIAL_FILTERS)
+    setFilterKey(k => k + 1)
+  }
+
+  return (
+    <div className="app">
+      {/* ── Header ── */}
+      <header className="header">
+        <div>
+          <h1 className="header-title">Proactive OTD Risk Line Identification</h1>
+          <span className="header-sub">Supplier: Indo-Mim &nbsp;|&nbsp; Site: Niles</span>
+        </div>
+        <UploadWidget onUploadSuccess={handleUploadSuccess} />
+        <div className="header-badge">Dashboard</div>
+      </header>
+
+      {/* ── Main layout: sidebar + content ── */}
+      <div className="main-layout">
+        {/* Left sidebar – Filters */}
+        <aside className="sidebar">
+          <FilterPanel key={filterKey} filters={filters} onFilterChange={setFilters} />
+        </aside>
+
+        {/* Right area – Tabs + content */}
+        <main className="content">
+          {/* Tab bar */}
+          <div className="tab-bar">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span className="tab-num">Tab {tab.id}</span>
+                <span className="tab-label">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="tab-content">
+            {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
+            {activeTab === 2 && <DummyTab title="Pivot Table 2" />}
+            {activeTab === 3 && <DummyTab title="Pivot Table 3" />}
+            {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
+            {activeTab === 5 && <DummyTab title="Pivot Table 5" />}
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
