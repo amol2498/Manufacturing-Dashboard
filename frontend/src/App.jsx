@@ -17,7 +17,7 @@ const TABS = [
   { id: 1, label: 'PO Lines Analysis' },
   { id: 2, label: 'Pivot Table 2' },
   { id: 3, label: 'Pivot Table 3' },
-  { id: 4, label: 'Pivot Table 4' },
+  { id: 4, label: 'OTD Projection' },
   { id: 5, label: 'Pivot Table 5' },
 ]
 
@@ -29,7 +29,15 @@ const INITIAL_FILTERS = {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState(1)
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = parseInt(localStorage.getItem('activeTab'), 10)
+    return TABS.some(t => t.id === saved) ? saved : 1
+  })
+
+  const handleTabChange = (id) => {
+    setActiveTab(id)
+    localStorage.setItem('activeTab', id)
+  }
   const [filters, setFilters] = useState(INITIAL_FILTERS)
   const [filterKey, setFilterKey] = useState(0)
 
@@ -65,7 +73,7 @@ export default function App() {
               <button
                 key={tab.id}
                 className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               >
                 <span className="tab-num">Tab {tab.id}</span>
                 <span className="tab-label">{tab.label}</span>

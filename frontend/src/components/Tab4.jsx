@@ -28,7 +28,7 @@ export default function Tab4({ filters }) {
         <span className="summary-badge">Total PO Lines: <strong>{totalLines}</strong></span>
       </div>
       <div className="section">
-        <h2 className="section-title">Pivot Table 4 — OTD Projection</h2>
+        <h2 className="section-title">OTD Projection</h2>
         <PivotTable4 data={pivotData} />
       </div>
     </div>

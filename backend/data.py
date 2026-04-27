@@ -15,15 +15,15 @@ def _parse_date_column(series: pd.Series) -> pd.Series:
     Robustly parse a date column that may contain a mix of:
     - Python datetime / date objects (from openpyxl Date cells)
     - Excel serial-date integers (cells formatted as General/Number)
-    - Date strings in various formats ("30 Jan 2025", "30/01/2025", "Jan-25", …)
+    - Date strings in dd-mm-yyyy format ("30-01-2025", "30/01/2025", "30 Jan 2025", …)
     """
-    # Pass 1: standard pandas parsing handles datetime objects and most strings
-    result = pd.to_datetime(series, errors="coerce")
+    # Pass 1: dayfirst=True to correctly handle dd-mm-yyyy strings
+    result = pd.to_datetime(series, dayfirst=True, errors="coerce")
 
-    # Pass 2: remaining NaT — try dayfirst (handles "30/01/2025", "30-01-2025")
+    # Pass 2: remaining NaT — fallback without dayfirst for other formats
     nat = result.isna() & series.notna()
     if nat.any():
-        result[nat] = pd.to_datetime(series[nat], dayfirst=True, errors="coerce")
+        result[nat] = pd.to_datetime(series[nat], errors="coerce")
 
     # Pass 3: remaining NaT — treat numeric values as Excel serial-date integers
     # (days since 1899-12-30, Excel's epoch)
@@ -59,6 +59,12 @@ def _parse_excel(source) -> pd.DataFrame:
     df["Stages"] = df["Stages"].fillna("Unknown")
     df["Ontime/Delay"] = df["Ontime/Delay"].fillna("Unknown")
     df["Delay Category"] = df["Delay Category"].fillna("Unknown")
+
+    # Past Due: due date has passed today AND stage is not "Shipped"
+    today = pd.Timestamp.now().normalize()
+    not_shipped = df["Stages"].str.strip().str.lower() != "shipped"
+    df["Past_Due"] = df["Due Date"].notna() & (df["Due Date"] < today) & not_shipped
+
     return df
 
 
@@ -178,7 +184,8 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months):
         normalized = mdf["Ontime/Delay"].str.strip().str.lower()
         ontime = int((normalized == "on time").sum())
         delay  = int((normalized == "delay").sum())
-        past_due = total - ontime - delay
+        # Past Due: due date < today AND not yet shipped (not "on time" or "delay")
+        past_due = int(mdf["Past_Due"].sum())
         month_stats[month] = {
             "ontime":   ontime,
             "delay":    delay,
