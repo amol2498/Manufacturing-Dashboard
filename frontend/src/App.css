@@ -336,6 +336,38 @@ body {
   width: 100%;
 }
 
+/* Collapsible chart section */
+.section-title-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f2f5;
+}
+
+.section-title-toggle:hover {
+  color: #2a52a0;
+}
+
+.section-title-toggle.open {
+  margin-bottom: 14px;
+}
+
+.chevron {
+  font-size: 11px;
+  color: #888;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
 /* ────────────────────────────────────────
    Dummy Tab
 ──────────────────────────────────────── */

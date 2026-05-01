@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# Excel / data files (sensitive)
+*.xlsx
+*.xls
+*.csv
+
+# Node
+dist/
+.DS_Store
+
+# Vite
+frontend/dist/
+frontend/.env

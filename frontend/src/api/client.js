@@ -35,6 +35,20 @@ export async function fetchChart1(filters) {
   return res.json()
 }
 
+export async function fetchPivot2(filters) {
+  const params = buildParams(filters)
+  const res = await fetch(`${BASE_URL}/pivot2?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch pivot2 data')
+  return res.json()
+}
+
+export async function fetchChart2(filters) {
+  const params = buildParams(filters)
+  const res = await fetch(`${BASE_URL}/chart2?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch chart2 data')
+  return res.json()
+}
+
 export async function fetchPivot4(filters) {
   const params = buildParams(filters)
   const res = await fetch(`${BASE_URL}/pivot4?${params}`)

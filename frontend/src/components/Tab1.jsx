@@ -13,6 +13,7 @@ export default function Tab1({ filters }) {
   const [chartData, setChartData] = useState({ data: [], stages: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showChart, setShowChart] = useState(false)
 
   // Re-fetch whenever filters change
   useEffect(() => {
@@ -60,10 +61,16 @@ export default function Tab1({ filters }) {
         <PivotTable1 data={pivotData} />
       </div>
 
-      {/* Section 2 – Month-wise Stage-wise Chart */}
+      {/* Section 2 – Month-wise Stage-wise Chart (collapsible) */}
       <div className="section">
-        <h2 className="section-title">PO Lines — Month-wise &amp; Stage-wise</h2>
-        <Chart1 data={chartData} />
+        <h2
+          className={`section-title section-title-toggle${showChart ? ' open' : ''}`}
+          onClick={() => setShowChart(v => !v)}
+        >
+          PO Lines — Month-wise &amp; Stage-wise
+          <span className={`chevron${showChart ? ' open' : ''}`}>▼</span>
+        </h2>
+        {showChart && <Chart1 data={chartData} />}
       </div>
     </div>
   )

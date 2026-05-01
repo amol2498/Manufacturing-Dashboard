@@ -81,6 +81,16 @@ def get_pivot1(
     """Return PO Line count pivot table: Stages × On-time/Delay status."""
     return data.get_pivot1_data(stages, ontime_delay, delay_category, months)
 
+@app.get("/api/pivot2")
+def get_pivot2(
+    stages: Optional[List[str]] = Query(default=None),
+    ontime_delay: Optional[List[str]] = Query(default=None),
+    delay_category: Optional[List[str]] = Query(default=None),
+    months: Optional[List[str]] = Query(default=None),
+):
+    """Return stage % share pivot: % of POs in each stage per month (out of that month's total)."""
+    return data.get_pivot2_data(stages, ontime_delay, delay_category, months)
+
 
 @app.get("/api/pivot4")
 def get_pivot4(
@@ -91,6 +101,17 @@ def get_pivot4(
 ):
     """Return OTD Projection pivot: Ontime / Delay / Past Due / Total / % OTD rows × months."""
     return data.get_pivot4_data(stages, ontime_delay, delay_category, months)
+
+
+@app.get("/api/chart2")
+def get_chart2(
+    stages: Optional[List[str]] = Query(default=None),
+    ontime_delay: Optional[List[str]] = Query(default=None),
+    delay_category: Optional[List[str]] = Query(default=None),
+    months: Optional[List[str]] = Query(default=None),
+):
+    """Return month-wise, stage-wise % share for stacked bar chart (mirrors Pivot2)."""
+    return data.get_chart2_data(stages, ontime_delay, delay_category, months)
 
 
 @app.get("/api/chart1")

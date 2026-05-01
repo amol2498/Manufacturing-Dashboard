@@ -157,6 +157,53 @@ def get_pivot1_data(stages, ontime_delay, delay_category, months):
         "rows": rows,
         "columns": ["Stages"] + month_order + ["Total"],
     }
+def get_pivot2_data(stages, ontime_delay, delay_category, months):
+    full_df = get_df()
+    # Denominator: all stages, only non-stage filters applied
+    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months)
+    # Numerator: all filters including stage
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+
+    if df.empty:
+        return {"rows": [], "columns": ["Stages", "Total"]}
+
+    month_order = (
+        full_df.dropna(subset=["Month"])
+        .drop_duplicates(["Month", "Month_Sort"])
+        .sort_values("Month_Sort")["Month"]
+        .tolist()
+    )
+
+    valid = df.dropna(subset=["Month"])
+    denom_valid = denom_df.dropna(subset=["Month"])
+    all_stages = sorted(valid["Stages"].dropna().unique().tolist())
+    month_totals = {m: int((denom_valid["Month"] == m).sum()) for m in month_order}
+    grand_total = sum(month_totals.values())
+
+    def pct(n, d): return round(n / d * 100, 1) if d else 0.0
+
+    rows = []
+    for stage in all_stages:
+        stage_df = valid[valid["Stages"] == stage]
+        stage_total = len(stage_df)
+        row = {"Stages": stage}
+        for month in month_order:
+            count = int((stage_df["Month"] == month).sum())
+            row[month] = pct(count, month_totals[month])
+        row["Total"] = pct(stage_total, grand_total)
+        rows.append(row)
+
+    rows.sort(key=lambda r: r["Total"], reverse=True)
+
+    filtered_month_totals = {m: int((valid["Month"] == m).sum()) for m in month_order}
+    filtered_grand_total = sum(filtered_month_totals.values())
+    grand_total_row = {"Stages": "Grand Total"}
+    for m in month_order:
+        grand_total_row[m] = pct(filtered_month_totals[m], month_totals[m])
+    grand_total_row["Total"] = pct(filtered_grand_total, grand_total)
+    rows.append(grand_total_row)
+
+    return {"rows": rows, "columns": ["Stages"] + month_order + ["Total"]}
 
 
 def get_pivot4_data(stages, ontime_delay, delay_category, months):
@@ -223,6 +270,42 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months):
     ]
 
     return {"rows": rows, "columns": ["Metric"] + month_order + ["Total"]}
+
+
+def get_chart2_data(stages, ontime_delay, delay_category, months):
+    full_df = get_df()
+    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+
+    if df.empty:
+        return {"data": [], "stages": []}
+
+    month_order = (
+        full_df.dropna(subset=["Month"])
+        .drop_duplicates(["Month", "Month_Sort"])
+        .sort_values("Month_Sort")[["Month_Sort", "Month"]]
+        .values.tolist()
+    )
+
+    valid = df.dropna(subset=["Month"])
+    denom_valid = denom_df.dropna(subset=["Month"])
+    all_stages = sorted(valid["Stages"].dropna().unique().tolist())
+    month_totals = {m: int((denom_valid["Month"] == m).sum()) for _, m in month_order}
+
+    def pct(n, d): return round(n / d * 100, 1) if d else 0.0
+
+    chart_records = []
+    for month_sort, month in month_order:
+        month_df = valid[valid["Month"] == month]
+        if month_df.empty and month_totals[month] == 0:
+            continue
+        record = {"Month": month}
+        for stage in all_stages:
+            count = int((month_df["Stages"] == stage).sum())
+            record[stage] = pct(count, month_totals[month])
+        chart_records.append(record)
+
+    return {"data": chart_records, "stages": all_stages}
 
 
 def get_chart1_data(stages, ontime_delay, delay_category, months):

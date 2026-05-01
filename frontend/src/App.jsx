@@ -3,6 +3,7 @@ import FilterPanel from './components/FilterPanel'
 import Tab1 from './components/Tab1'
 import DummyTab from './components/DummyTab'
 import Tab4 from './components/Tab4'
+import Tab2 from './components/Tab2'
 import UploadWidget from './components/UploadWidget'
 import './App.css'
 
@@ -84,7 +85,7 @@ export default function App() {
           {/* Tab content */}
           <div className="tab-content">
             {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
-            {activeTab === 2 && <DummyTab title="Pivot Table 2" />}
+            {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
             {activeTab === 3 && <DummyTab title="Pivot Table 3" />}
             {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
             {activeTab === 5 && <DummyTab title="Pivot Table 5" />}
