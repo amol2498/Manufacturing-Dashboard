@@ -24,6 +24,7 @@ const TABS = [
 ]
 
 const INITIAL_FILTERS = {
+  supplier_names: [],
   stages: [],
   ontime_delay: [],
   delay_category: [],

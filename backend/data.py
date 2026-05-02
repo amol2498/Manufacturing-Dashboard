@@ -94,7 +94,9 @@ def get_df() -> pd.DataFrame:
     return _df
 
 
-def apply_filters(df, stages, ontime_delay, delay_category, months):
+def apply_filters(df, stages, ontime_delay, delay_category, months, supplier_names=None):
+    if supplier_names:
+        df = df[df["Supplier Name"].isin(supplier_names)]
     if stages:
         df = df[df["Stages"].isin(stages)]
     if ontime_delay:
@@ -114,6 +116,7 @@ def get_filter_options():
         .sort_values("Month_Sort")
     )
     return {
+        "supplier_names": sorted(df["Supplier Name"].dropna().unique().tolist()),
         "stages": sorted(df["Stages"].dropna().unique().tolist()),
         "ontime_delay": sorted(df["Ontime/Delay"].dropna().unique().tolist()),
         "delay_category": sorted(df["Delay Category"].dropna().unique().tolist()),
@@ -121,9 +124,9 @@ def get_filter_options():
     }
 
 
-def get_pivot1_data(stages, ontime_delay, delay_category, months):
+def get_pivot1_data(stages, ontime_delay, delay_category, months, supplier_names=None):
     full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
 
     if df.empty:
         return {"rows": [], "columns": ["Stages", "Total"]}
@@ -166,58 +169,9 @@ def get_pivot1_data(stages, ontime_delay, delay_category, months):
         "rows": rows,
         "columns": ["Stages"] + month_order + ["Total"],
     }
-def get_pivot2_data(stages, ontime_delay, delay_category, months):
+def get_pivot2_data(stages, ontime_delay, delay_category, months, supplier_names=None):
     full_df = get_df()
-    # Denominator: all stages, only non-stage filters applied
-    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months)
-    # Numerator: all filters including stage
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
-
-    if df.empty:
-        return {"rows": [], "columns": ["Stages", "Total"]}
-
-    month_order = (
-        full_df.dropna(subset=["Month"])
-        .drop_duplicates(["Month", "Month_Sort"])
-        .sort_values("Month_Sort")["Month"]
-        .tolist()
-    )
-
-    valid = df.dropna(subset=["Month"])
-    denom_valid = denom_df.dropna(subset=["Month"])
-    all_stages = sorted(valid["Stages"].dropna().unique().tolist())
-    month_totals = {m: int((denom_valid["Month"] == m).sum()) for m in month_order}
-    grand_total = sum(month_totals.values())
-
-    def pct(n, d): return round(n / d * 100, 1) if d else 0.0
-
-    rows = []
-    for stage in all_stages:
-        stage_df = valid[valid["Stages"] == stage]
-        stage_total = len(stage_df)
-        row = {"Stages": stage}
-        for month in month_order:
-            count = int((stage_df["Month"] == month).sum())
-            row[month] = pct(count, month_totals[month])
-        row["Total"] = pct(stage_total, grand_total)
-        rows.append(row)
-
-    rows.sort(key=lambda r: r["Total"], reverse=True)
-
-    filtered_month_totals = {m: int((valid["Month"] == m).sum()) for m in month_order}
-    filtered_grand_total = sum(filtered_month_totals.values())
-    grand_total_row = {"Stages": "Grand Total"}
-    for m in month_order:
-        grand_total_row[m] = pct(filtered_month_totals[m], month_totals[m])
-    grand_total_row["Total"] = pct(filtered_grand_total, grand_total)
-    rows.append(grand_total_row)
-
-    return {"rows": rows, "columns": ["Stages"] + month_order + ["Total"]}
-
-
-def get_pivot2_data(stages, ontime_delay, delay_category, months):
-    full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
 
     if df.empty:
         return {"rows": [], "columns": ["Stages", "Total"]}
@@ -256,16 +210,16 @@ def get_pivot2_data(stages, ontime_delay, delay_category, months):
 
     total_row = {"Stages": "Total"}
     for m in month_order:
-        total_row[m] = 0  # blank in UI
+        total_row[m] = pct(month_totals[m], month_totals[m])
     total_row["Total"] = pct(grand_total, grand_total)
     rows.append(total_row)
 
     return {"rows": rows, "columns": ["Stages"] + month_order + ["Total"]}
 
 
-def get_pivot4_data(stages, ontime_delay, delay_category, months):
+def get_pivot4_data(stages, ontime_delay, delay_category, months, supplier_names=None):
     full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
 
     if df.empty:
         return {"rows": [], "columns": ["Metric", "Total"]}
@@ -345,10 +299,10 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months):
     return {"rows": rows, "columns": ["Metric"] + month_order + ["Total"]}
 
 
-def get_chart2_data(stages, ontime_delay, delay_category, months):
+def get_chart2_data(stages, ontime_delay, delay_category, months, supplier_names=None):
     full_df = get_df()
-    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months)
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months, supplier_names)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
 
     if df.empty:
         return {"data": [], "stages": []}
@@ -381,9 +335,9 @@ def get_chart2_data(stages, ontime_delay, delay_category, months):
     return {"data": chart_records, "stages": all_stages}
 
 
-def get_chart1_data(stages, ontime_delay, delay_category, months):
+def get_chart1_data(stages, ontime_delay, delay_category, months, supplier_names=None):
     df = get_df()
-    df = apply_filters(df, stages, ontime_delay, delay_category, months)
+    df = apply_filters(df, stages, ontime_delay, delay_category, months, supplier_names)
 
     if df.empty:
         return {"data": [], "stages": []}
@@ -407,9 +361,9 @@ def get_chart1_data(stages, ontime_delay, delay_category, months):
     return {"data": chart_records, "stages": all_stages}
 
 
-def get_pivot5_data(stages, ontime_delay, delay_category, months):
+def get_pivot5_data(stages, ontime_delay, delay_category, months, supplier_names=None):
     full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
 
     if df.empty:
         return {"rows": [], "columns": ["Metric", "Total"]}
@@ -421,23 +375,37 @@ def get_pivot5_data(stages, ontime_delay, delay_category, months):
         .tolist()
     )
 
+    # Build Month → Month_Sort mapping for cumulative logic
+    month_meta = (
+        full_df.dropna(subset=["Month"])
+        .drop_duplicates(["Month", "Month_Sort"])
+        .set_index("Month")["Month_Sort"]
+        .to_dict()
+    )
+
     valid = df.dropna(subset=["Month"])
 
-    delay_counts   = {}
+    delay_counts    = {}
     past_due_counts = {}
     for month in month_order:
-        mdf = valid[valid["Month"] == month]
-        delay_counts[month]    = int((mdf["Ontime/Delay"].str.strip().str.lower() == "delay").sum())
-        past_due_counts[month] = int(mdf["Past_Due"].sum())
+        # Delay Line: cumulative — Ontime/Delay = "Delay" AND due month ≤ M
+        m_sort  = month_meta.get(month, "")
+        cum_df  = valid[valid["Month_Sort"] <= m_sort] if m_sort else valid.iloc[:0]
+        cum_norm = cum_df["Ontime/Delay"].str.strip().str.lower()
+        delay_counts[month] = int((cum_norm == "delay").sum())
 
-    # Docking Lines: group filtered rows by Dock Month label
-    dock_valid = df.dropna(subset=["Dock_Month_Label"])
+        # Total Past Due Lines: cumulative — due month ≤ M AND Ontime/Delay = "Delay"
+        past_due_counts[month] = delay_counts[month]
+
+    # Docking Lines: records where Dock Month = M
+    dock_valid  = df.dropna(subset=["Dock_Month_Label"])
     dock_series = dock_valid.groupby("Dock_Month_Label").size()
     dock_counts = {m: int(dock_series.get(m, 0)) for m in month_order}
 
     t_delay    = sum(delay_counts.values())
     t_dock     = sum(dock_counts.values())
-    t_past_due = sum(past_due_counts.values())
+    # Total for past due = last month's cumulative (grand total of delayed)
+    t_past_due = past_due_counts[month_order[-1]] if month_order else 0
 
     total_counts = {m: int((valid["Month"] == m).sum()) for m in month_order}
     t_all = sum(total_counts.values())

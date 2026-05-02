@@ -139,6 +139,23 @@ body {
   margin-bottom: 6px;
 }
 
+.filter-combo {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #374151;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+}
+
+.filter-combo:focus {
+  border-color: #1D4ED8;
+  box-shadow: 0 0 0 2px rgba(29,78,216,0.15);
+}
+
 .filter-option {
   display: flex;
   align-items: flex-start;

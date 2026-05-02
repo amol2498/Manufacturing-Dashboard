@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react'
 import { fetchFilters } from '../api/client'
 
-/**
- * FilterPanel – Left sidebar with checkboxes for each filter dimension.
- * Calls onFilterChange(newFilters) whenever user ticks/unticks a checkbox.
- */
 export default function FilterPanel({ filters, onFilterChange }) {
   const [options, setOptions] = useState({
+    supplier_names: [],
     stages: [],
     ontime_delay: [],
     delay_category: [],
@@ -29,7 +26,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
   }
 
   const clearAll = () => {
-    onFilterChange({ stages: [], ontime_delay: [], delay_category: [], months: [] })
+    onFilterChange({ supplier_names: [], stages: [], ontime_delay: [], delay_category: [], months: [] })
   }
 
   if (error) return <div className="filter-error">{error}</div>
@@ -39,6 +36,24 @@ export default function FilterPanel({ filters, onFilterChange }) {
       <div className="filter-header">
         <h3>Filters</h3>
         <button className="clear-btn" onClick={clearAll}>Clear All</button>
+      </div>
+
+      {/* Supplier Name — combo box */}
+      <div className="filter-group">
+        <h4>Supplier Name</h4>
+        <select
+          className="filter-combo"
+          value={filters.supplier_names?.[0] || ''}
+          onChange={e => {
+            const val = e.target.value
+            onFilterChange({ ...filters, supplier_names: val ? [val] : [] })
+          }}
+        >
+          <option value="">All Suppliers</option>
+          {options.supplier_names.map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
       </div>
 
       <FilterGroup

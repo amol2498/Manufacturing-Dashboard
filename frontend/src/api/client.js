@@ -8,10 +8,11 @@ const BASE_URL = 'http://localhost:8000/api'
 /** Convert filter object into URL query string, supporting multi-value params. */
 function buildParams(filters) {
   const params = new URLSearchParams()
-  if (filters.stages?.length)        filters.stages.forEach(v => params.append('stages', v))
-  if (filters.ontime_delay?.length)  filters.ontime_delay.forEach(v => params.append('ontime_delay', v))
+  if (filters.supplier_names?.length) filters.supplier_names.forEach(v => params.append('supplier_names', v))
+  if (filters.stages?.length)         filters.stages.forEach(v => params.append('stages', v))
+  if (filters.ontime_delay?.length)   filters.ontime_delay.forEach(v => params.append('ontime_delay', v))
   if (filters.delay_category?.length) filters.delay_category.forEach(v => params.append('delay_category', v))
-  if (filters.months?.length)        filters.months.forEach(v => params.append('months', v))
+  if (filters.months?.length)         filters.months.forEach(v => params.append('months', v))
   return params.toString()
 }
 
