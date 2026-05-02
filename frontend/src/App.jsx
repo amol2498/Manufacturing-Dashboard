@@ -2,8 +2,9 @@ import { useState } from 'react'
 import FilterPanel from './components/FilterPanel'
 import Tab1 from './components/Tab1'
 import DummyTab from './components/DummyTab'
-import Tab4 from './components/Tab4'
 import Tab2 from './components/Tab2'
+import Tab4 from './components/Tab4'
+import Tab5 from './components/Tab5'
 import UploadWidget from './components/UploadWidget'
 import './App.css'
 
@@ -16,10 +17,10 @@ import './App.css'
 
 const TABS = [
   { id: 1, label: 'PO Lines Analysis' },
-  { id: 2, label: 'Pivot Table 2' },
+  { id: 2, label: 'Stage-wise Distribution' },
   { id: 3, label: 'Pivot Table 3' },
   { id: 4, label: 'OTD Projection' },
-  { id: 5, label: 'Pivot Table 5' },
+  { id: 5, label: 'Past Due Recovery for Delay lines' },
 ]
 
 const INITIAL_FILTERS = {
@@ -88,7 +89,7 @@ export default function App() {
             {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
             {activeTab === 3 && <DummyTab title="Pivot Table 3" />}
             {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
-            {activeTab === 5 && <DummyTab title="Pivot Table 5" />}
+            {activeTab === 5 && <Tab5 key={filterKey} filters={filters} />}
           </div>
         </main>
       </div>

@@ -24,3 +24,6 @@ echo   Open http://localhost:5173 in your browser
 echo =============================================
 echo.
 pause
+
+
+ALTER TABLE PL_SILVER.CONFORMED.LIFE_POLICY_CONFORMED RENAME COLUMN FACE_AMOUNT_USD TO FACE_AMT

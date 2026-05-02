@@ -1,6 +1,16 @@
-const METRIC_COL = 'Metric'
-const PCT_ROWS   = new Set(['% OTD with Past Due', '% OTD without Past Due'])
+const METRIC_COL  = 'Metric'
+const PCT_ROWS    = new Set(['% OTD with Past Due', '% OTD without Past Due'])
 const DIVIDER_ABOVE = new Set(['Total Lines', '% OTD with Past Due'])
+
+// Hide months before April 2026 in the UI (backend still computes them for cumulative accuracy)
+const HIDE_BEFORE = new Date(2026, 3, 1) // April 2026
+const MONTH_ABBRS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+function parseMonthLabel(label) {
+  // "Mar'26" → Date(2026, 2, 1)
+  const [mon, yr] = label.split("'")
+  return new Date(2000 + parseInt(yr, 10), MONTH_ABBRS.indexOf(mon), 1)
+}
 
 function fmt(metric, value) {
   if (value === undefined || value === null) return ''
@@ -15,14 +25,17 @@ export default function PivotTable4({ data }) {
     return <div className="no-data">No data available for the selected filters.</div>
   }
 
-  const monthCols = columns.filter(c => c !== METRIC_COL && c !== 'Total')
+  const monthCols = columns.filter(c => {
+    if (c === METRIC_COL || c === 'Total') return false
+    try { return parseMonthLabel(c) >= HIDE_BEFORE } catch { return true }
+  })
 
   return (
     <div className="table-container">
       <table className="pivot-table pivot-table-4">
         <thead>
           <tr>
-            <th className="col-metric">OTD Projection</th>
+            <th className="col-metric"></th>
             {monthCols.map(col => (
               <th key={col} className="col-number">{col}</th>
             ))}

@@ -56,6 +56,13 @@ export async function fetchPivot4(filters) {
   return res.json()
 }
 
+export async function fetchPivot5(filters) {
+  const params = buildParams(filters)
+  const res = await fetch(`${BASE_URL}/pivot5?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch pivot5 data')
+  return res.json()
+}
+
 export async function uploadExcel(file) {
   const formData = new FormData()
   formData.append('file', file)

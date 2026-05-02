@@ -45,7 +45,7 @@ export default function Tab1({ filters }) {
   }
 
   // Total PO lines from the Total row (last row)
-  const grandTotal = pivotData.rows?.find(r => r['Stages (Column I)'] === 'Total')
+  const grandTotal = pivotData.rows?.find(r => r['Stages'] === 'Grand Total')
   const totalLines = grandTotal?.Total ?? 0
 
   return (
@@ -57,8 +57,7 @@ export default function Tab1({ filters }) {
 
       {/* Section 1 – Pivot Table */}
       <div className="section">
-        <h2 className="section-title">Pivot Table 1 — PO Line Count by Stage</h2>
-        <PivotTable1 data={pivotData} />
+<PivotTable1 data={pivotData} />
       </div>
 
       {/* Section 2 – Month-wise Stage-wise Chart (collapsible) */}
