@@ -283,6 +283,38 @@ body {
   border-bottom: 2px solid #f0f2f5;
 }
 
+.section-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e3a5f;
+  background: none;
+  border: 1px solid #c8d4e8;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.download-link:hover:not(:disabled) {
+  background: #eef2fa;
+  border-color: #1e3a5f;
+}
+
+.download-link:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ────────────────────────────────────────
    Pivot Table
 ──────────────────────────────────────── */
@@ -465,8 +497,120 @@ body {
 .upload-status--error   { color: #fca5a5; }
 
 /* ────────────────────────────────────────
+   Tab 3 — Week Upload
+──────────────────────────────────────── */
+.tab3-upload-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 0;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.tab3-uploader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tab3-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e3a5f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.tab3-upload-btn:hover:not(:disabled) {
+  background: #16305a;
+}
+
+.tab3-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tab3-upload-btn--success {
+  background: #1e6f3a;
+}
+
+.tab3-upload-btn--success:hover:not(:disabled) {
+  background: #185c30;
+}
+
+.tab3-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tab3-file-name {
+  font-size: 12px;
+  color: #333;
+  word-break: break-all;
+}
+
+.tab3-file-rows {
+  font-size: 11px;
+  color: #888;
+}
+
+.tab3-upload-error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+/* ────────────────────────────────────────
    Pivot Table 4 — OTD Projection
 ──────────────────────────────────────── */
+/* ────────────────────────────────────────
+   Pivot Table 3 — Week-over-Week
+──────────────────────────────────────── */
+.pivot-table-3 .p3-header-title {
+  background: #1e3a5f;
+  color: #fff;
+  text-align: left;
+  min-width: 170px;
+}
+
+.pivot-table-3 .p3-month-header {
+  background: #1e3a5f;
+  color: #fff;
+  text-align: center;
+  border-left: 2px solid rgba(255,255,255,0.25);
+}
+
+.pivot-table-3 .p3-week-header {
+  background: #2a4f7c;
+  color: #fff;
+  text-align: center;
+  font-weight: 500;
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-left: 1px solid rgba(255,255,255,0.15);
+}
+
+.pivot-table-3 .p3-prev-cell {
+  background: #fafafa;
+  border-left: 2px solid #dde1e7;
+}
+
+.pivot-table-3 .p3-curr-cell {
+  background: #fff;
+  border-left: 1px solid #f0f0f0;
+}
+
 .col-metric {
   text-align: left;
   min-width: 200px;

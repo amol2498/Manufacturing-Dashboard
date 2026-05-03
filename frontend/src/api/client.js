@@ -64,6 +64,35 @@ export async function fetchPivot5(filters) {
   return res.json()
 }
 
+export async function uploadTab3Current(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${BASE_URL}/upload-tab3-current`, { method: 'POST', body: formData })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
+    throw new Error(err.detail || 'Upload failed')
+  }
+  return res.json()
+}
+
+export async function uploadTab3Previous(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${BASE_URL}/upload-tab3-previous`, { method: 'POST', body: formData })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
+    throw new Error(err.detail || 'Upload failed')
+  }
+  return res.json()
+}
+
+export async function fetchPivot3(filters) {
+  const params = buildParams(filters || {})
+  const res = await fetch(`${BASE_URL}/pivot3?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch pivot3 data')
+  return res.json()
+}
+
 export async function uploadExcel(file) {
   const formData = new FormData()
   formData.append('file', file)

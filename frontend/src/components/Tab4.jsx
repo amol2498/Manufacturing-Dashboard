@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { fetchPivot4 } from '../api/client'
 import PivotTable4 from './PivotTable4'
+import DownloadButton from './DownloadButton'
+import { exportStandardPivot } from '../utils/exportExcel'
 
 export default function Tab4({ filters }) {
   const [pivotData, setPivotData] = useState({ rows: [], columns: [] })
@@ -19,8 +21,7 @@ export default function Tab4({ filters }) {
   if (error)   return <div className="section"><div className="error-msg">{error}</div></div>
   if (loading) return <div className="section"><div className="loading">Loading data…</div></div>
 
-  const totalRow  = pivotData.rows?.find(r => r['Metric'] === 'Total Lines')
-  const totalLines = totalRow?.Total ?? 0
+  const totalLines = pivotData.rows?.find(r => r['Metric'] === 'Total Lines')?.Total ?? 0
 
   return (
     <div>
@@ -28,7 +29,13 @@ export default function Tab4({ filters }) {
         <span className="summary-badge">Total PO Lines: <strong>{totalLines}</strong></span>
       </div>
       <div className="section">
-<PivotTable4 data={pivotData} />
+        <div className="section-toolbar">
+          <DownloadButton
+            onClick={() => exportStandardPivot(pivotData.rows, pivotData.columns, 'OTD_Projection')}
+            disabled={!pivotData.rows?.length}
+          />
+        </div>
+        <PivotTable4 data={pivotData} />
       </div>
     </div>
   )

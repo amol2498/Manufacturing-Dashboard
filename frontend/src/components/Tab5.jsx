@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { fetchPivot5 } from '../api/client'
 import PivotTable5 from './PivotTable5'
 import Chart5 from './Chart5'
+import DownloadButton from './DownloadButton'
+import { exportStandardPivot } from '../utils/exportExcel'
 
 export default function Tab5({ filters }) {
   const [pivotData, setPivotData] = useState({ rows: [], columns: [] })
@@ -29,6 +31,12 @@ export default function Tab5({ filters }) {
         <span className="summary-badge">Total PO Lines: <strong>{totalLines}</strong></span>
       </div>
       <div className="section">
+        <div className="section-toolbar">
+          <DownloadButton
+            onClick={() => exportStandardPivot(pivotData.rows, pivotData.columns, 'Past_Due_Recovery')}
+            disabled={!pivotData.rows?.length}
+          />
+        </div>
         <PivotTable5 data={pivotData} />
       </div>
       <div className="section">

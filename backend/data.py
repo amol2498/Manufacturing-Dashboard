@@ -8,6 +8,8 @@ EXCEL_PATH = os.environ.get(
 )
 
 _df = None
+_tab3_current_df = None
+_tab3_previous_df = None
 
 
 def _parse_date_column(series: pd.Series) -> pd.Series:
@@ -359,6 +361,89 @@ def get_chart1_data(stages, ontime_delay, delay_category, months, supplier_names
         chart_records.append(record)
 
     return {"data": chart_records, "stages": all_stages}
+
+
+def reload_tab3_current(file_bytes: bytes) -> None:
+    global _tab3_current_df
+    _tab3_current_df = _parse_excel(io.BytesIO(file_bytes))
+
+
+def reload_tab3_previous(file_bytes: bytes) -> None:
+    global _tab3_previous_df
+    _tab3_previous_df = _parse_excel(io.BytesIO(file_bytes))
+
+
+def get_tab3_current_df():
+    return _tab3_current_df
+
+
+def get_tab3_previous_df():
+    return _tab3_previous_df
+
+
+def get_pivot3_data(stages=None, ontime_delay=None, delay_category=None, months=None, supplier_names=None):
+    curr_df = _tab3_current_df
+    prev_df = _tab3_previous_df
+
+    has_current  = curr_df is not None and not curr_df.empty
+    has_previous = prev_df is not None and not prev_df.empty
+
+    if not has_current and not has_previous:
+        return {"stages": [], "months": [], "data": {}, "grand_total": {},
+                "has_current": False, "has_previous": False}
+
+    # Apply filters to working copies (preserve originals for has_* flags)
+    f_curr = apply_filters(curr_df, stages, ontime_delay, delay_category, months, supplier_names) if has_current  else curr_df
+    f_prev = apply_filters(prev_df, stages, ontime_delay, delay_category, months, supplier_names) if has_previous else prev_df
+
+    # Union of months from both DataFrames, sorted chronologically
+    month_parts = []
+    if has_current:
+        month_parts.append(
+            f_curr.dropna(subset=["Month"]).drop_duplicates(["Month", "Month_Sort"])
+        )
+    if has_previous:
+        month_parts.append(
+            f_prev.dropna(subset=["Month"]).drop_duplicates(["Month", "Month_Sort"])
+        )
+    month_order = (
+        pd.concat(month_parts)
+        .drop_duplicates(["Month", "Month_Sort"])
+        .sort_values("Month_Sort")["Month"]
+        .tolist()
+    ) if month_parts else []
+
+    # Union of stages from both filtered DataFrames
+    stages_set = set()
+    if has_current:
+        stages_set.update(f_curr["Stages"].dropna().unique())
+    if has_previous:
+        stages_set.update(f_prev["Stages"].dropna().unique())
+    all_stages = sorted(stages_set)
+
+    data_out = {}
+    grand_current  = {m: 0 for m in month_order}
+    grand_previous = {m: 0 for m in month_order}
+
+    for stage in all_stages:
+        data_out[stage] = {}
+        for month in month_order:
+            c = int(((f_curr["Stages"] == stage) & (f_curr["Month"] == month)).sum()) if has_current  else 0
+            p = int(((f_prev["Stages"] == stage) & (f_prev["Month"] == month)).sum()) if has_previous else 0
+            data_out[stage][month] = {"current": c, "previous": p}
+            grand_current[month]  += c
+            grand_previous[month] += p
+
+    grand_total = {m: {"current": grand_current[m], "previous": grand_previous[m]} for m in month_order}
+
+    return {
+        "stages":      all_stages,
+        "months":      month_order,
+        "data":        data_out,
+        "grand_total": grand_total,
+        "has_current":  has_current,
+        "has_previous": has_previous,
+    }
 
 
 def get_pivot5_data(stages, ontime_delay, delay_category, months, supplier_names=None):

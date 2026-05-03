@@ -65,6 +65,45 @@ async def upload_excel(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
 
 
+@app.post("/api/upload-tab3-current")
+async def upload_tab3_current(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        data.reload_tab3_current(contents)
+        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_tab3_current_df())}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
+@app.post("/api/upload-tab3-previous")
+async def upload_tab3_previous(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        data.reload_tab3_previous(contents)
+        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_tab3_previous_df())}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
+@app.get("/api/pivot3")
+def get_pivot3(
+    stages: Optional[List[str]] = Query(default=None),
+    ontime_delay: Optional[List[str]] = Query(default=None),
+    delay_category: Optional[List[str]] = Query(default=None),
+    months: Optional[List[str]] = Query(default=None),
+    supplier_names: Optional[List[str]] = Query(default=None),
+):
+    return data.get_pivot3_data(stages, ontime_delay, delay_category, months, supplier_names)
+
+
 @app.get("/api/filters")
 def get_filters():
     return data.get_filter_options()

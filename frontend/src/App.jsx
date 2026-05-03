@@ -2,6 +2,7 @@ import { useState } from 'react'
 import FilterPanel from './components/FilterPanel'
 import Tab1 from './components/Tab1'
 import DummyTab from './components/DummyTab'
+import Tab3 from './components/Tab3'
 import Tab2 from './components/Tab2'
 import Tab4 from './components/Tab4'
 import Tab5 from './components/Tab5'
@@ -18,7 +19,7 @@ import './App.css'
 const TABS = [
   { id: 1, label: 'PO Lines Analysis' },
   { id: 2, label: 'Stage-wise Distribution' },
-  { id: 3, label: 'Pivot Table 3' },
+  { id: 3, label: 'Week-over-Week' },
   { id: 4, label: 'OTD Projection' },
   { id: 5, label: 'Past Due Recovery for Delay lines' },
 ]
@@ -78,7 +79,6 @@ export default function App() {
                 className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => handleTabChange(tab.id)}
               >
-                <span className="tab-num">Tab {tab.id}</span>
                 <span className="tab-label">{tab.label}</span>
               </button>
             ))}
@@ -88,7 +88,7 @@ export default function App() {
           <div className="tab-content">
             {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
             {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
-            {activeTab === 3 && <DummyTab title="Pivot Table 3" />}
+            {activeTab === 3 && <Tab3 filters={filters} />}
             {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
             {activeTab === 5 && <Tab5 key={filterKey} filters={filters} />}
           </div>

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { fetchPivot2, fetchChart2 } from '../api/client'
 import PivotTable2 from './PivotTable2'
 import Chart2 from './Chart2'
+import DownloadButton from './DownloadButton'
+import { exportStandardPivot } from '../utils/exportExcel'
 
 export default function Tab2({ filters }) {
   const [pivotData, setPivotData] = useState({ rows: [], columns: [] })
@@ -28,6 +30,12 @@ export default function Tab2({ filters }) {
   return (
     <div>
       <div className="section">
+        <div className="section-toolbar">
+          <DownloadButton
+            onClick={() => exportStandardPivot(pivotData.rows, pivotData.columns, 'Stage_Distribution')}
+            disabled={!pivotData.rows?.length}
+          />
+        </div>
         <PivotTable2 data={pivotData} />
       </div>
       <div className="section">

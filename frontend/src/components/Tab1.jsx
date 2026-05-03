@@ -2,12 +2,9 @@ import { useState, useEffect } from 'react'
 import { fetchPivot1, fetchChart1 } from '../api/client'
 import PivotTable1 from './PivotTable1'
 import Chart1 from './Chart1'
+import DownloadButton from './DownloadButton'
+import { exportStandardPivot } from '../utils/exportExcel'
 
-/**
- * Tab1 – Two sections:
- *   Section 1: Pivot Table 1 – PO Line count by Stage × On-time/Delay
- *   Section 2: Stacked bar chart – PO Lines month-wise and stage-wise
- */
 export default function Tab1({ filters }) {
   const [pivotData, setPivotData] = useState({ rows: [], columns: [] })
   const [chartData, setChartData] = useState({ data: [], stages: [] })
@@ -15,7 +12,6 @@ export default function Tab1({ filters }) {
   const [error, setError] = useState(null)
   const [showChart, setShowChart] = useState(false)
 
-  // Re-fetch whenever filters change
   useEffect(() => {
     setLoading(true)
     setError(null)
@@ -44,23 +40,25 @@ export default function Tab1({ filters }) {
     )
   }
 
-  // Total PO lines from the Total row (last row)
   const grandTotal = pivotData.rows?.find(r => r['Stages'] === 'Grand Total')
   const totalLines = grandTotal?.Total ?? 0
 
   return (
     <div>
-      {/* Summary badge */}
       <div className="summary-bar">
         <span className="summary-badge">Total PO Lines: <strong>{totalLines}</strong></span>
       </div>
 
-      {/* Section 1 – Pivot Table */}
       <div className="section">
-<PivotTable1 data={pivotData} />
+        <div className="section-toolbar">
+          <DownloadButton
+            onClick={() => exportStandardPivot(pivotData.rows, pivotData.columns, 'PO_Lines_Analysis')}
+            disabled={!pivotData.rows?.length}
+          />
+        </div>
+        <PivotTable1 data={pivotData} />
       </div>
 
-      {/* Section 2 – Month-wise Stage-wise Chart (collapsible) */}
       <div className="section">
         <h2
           className={`section-title section-title-toggle${showChart ? ' open' : ''}`}
