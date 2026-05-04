@@ -1,15 +1,41 @@
 import pandas as pd
 import os
 import io
+import time
+from threading import Lock
 
 EXCEL_PATH = os.environ.get(
     "EXCEL_PATH",
     r"C:\Users\AmolManthalkar\Downloads\Proactove OTD Risk Line Identification tool _04.23.xlsx"
 )
 
-_df = None
-_tab3_current_df = None
-_tab3_previous_df = None
+# Per-session storage keyed by session_id (UUID from the browser).
+# Each session is isolated: uploads affect only that session's DataFrame.
+_sessions: dict = {}
+_sessions_lock = Lock()
+
+
+def _get_session(session_id: str) -> dict:
+    with _sessions_lock:
+        if session_id not in _sessions:
+            _sessions[session_id] = {
+                'df': pd.DataFrame(),
+                'tab3_current': None,
+                'tab3_previous': None,
+                'version': 0,
+                'last_accessed': time.time(),
+            }
+        else:
+            _sessions[session_id]['last_accessed'] = time.time()
+        return _sessions[session_id]
+
+
+def _bump_version(session_id: str) -> None:
+    _get_session(session_id)['version'] = int(time.time() * 1000)
+
+
+def get_data_version(session_id: str) -> int:
+    return _get_session(session_id)['version']
 
 
 def _parse_date_column(series: pd.Series) -> pd.Series:
@@ -19,16 +45,12 @@ def _parse_date_column(series: pd.Series) -> pd.Series:
     - Excel serial-date integers (cells formatted as General/Number)
     - Date strings in dd-mm-yyyy format ("30-01-2025", "30/01/2025", "30 Jan 2025", …)
     """
-    # Pass 1: dayfirst=True to correctly handle dd-mm-yyyy strings
     result = pd.to_datetime(series, dayfirst=True, errors="coerce")
 
-    # Pass 2: remaining NaT — fallback without dayfirst for other formats
     nat = result.isna() & series.notna()
     if nat.any():
         result[nat] = pd.to_datetime(series[nat], errors="coerce")
 
-    # Pass 3: remaining NaT — treat numeric values as Excel serial-date integers
-    # (days since 1899-12-30, Excel's epoch)
     nat = result.isna() & series.notna()
     if nat.any():
         numeric = pd.to_numeric(series[nat], errors="coerce")
@@ -47,7 +69,13 @@ def _parse_excel(source) -> pd.DataFrame:
     for header_row in [0, 1]:
         if hasattr(source, "seek"):
             source.seek(0)
-        df = pd.read_excel(source, sheet_name="Supplier- Base sheet", header=header_row)
+        df = pd.read_excel(
+            source,
+            sheet_name="Supplier- Base sheet",
+            header=header_row,
+            engine="openpyxl",
+            engine_kwargs={"data_only": True},
+        )
         df.columns = df.columns.str.strip()
         if "PO #" in df.columns:
             break
@@ -56,13 +84,12 @@ def _parse_excel(source) -> pd.DataFrame:
 
     df = df.dropna(subset=["PO #"])
     df["Due Date"] = _parse_date_column(df["Due Date"])
-    df["Month"] = df["Due Date"].dt.strftime("%b'%y")   # e.g. Jan'25, Mar'26
-    df["Month_Sort"] = df["Due Date"].dt.to_period("M").astype(str)  # e.g. 2025-01
+    df["Month"] = df["Due Date"].dt.strftime("%b'%y")
+    df["Month_Sort"] = df["Due Date"].dt.to_period("M").astype(str)
     df["Stages"] = df["Stages"].fillna("Unknown")
     df["Ontime/Delay"] = df["Ontime/Delay"].fillna("Unknown")
     df["Delay Category"] = df["Delay Category"].fillna("Unknown")
 
-    # Dock Month column (used in Pivot 5)
     if "Dock Month" in df.columns:
         df["Dock Month"] = _parse_date_column(df["Dock Month"])
         df["Dock_Month_Label"] = df["Dock Month"].dt.strftime("%b'%y")
@@ -71,7 +98,6 @@ def _parse_excel(source) -> pd.DataFrame:
         df["Dock_Month_Label"] = pd.NA
         df["Dock_Month_Sort"]  = pd.NA
 
-    # Past Due: due date has passed today AND stage is not "Shipped"
     today = pd.Timestamp.now().normalize()
     not_shipped = df["Stages"].str.strip().str.lower() != "shipped"
     df["Past_Due"] = df["Due Date"].notna() & (df["Due Date"] < today) & not_shipped
@@ -79,24 +105,37 @@ def _parse_excel(source) -> pd.DataFrame:
     return df
 
 
-def load_data() -> pd.DataFrame:
-    return _parse_excel(EXCEL_PATH)
+def reload_data(file_bytes: bytes, session_id: str) -> None:
+    session = _get_session(session_id)
+    session['df'] = _parse_excel(io.BytesIO(file_bytes))
+    _bump_version(session_id)
 
 
-def reload_data(file_bytes: bytes) -> None:
-    """Replace the cached DataFrame with data from uploaded file bytes."""
-    global _df
-    _df = _parse_excel(io.BytesIO(file_bytes))
+def get_df(session_id: str) -> pd.DataFrame:
+    return _get_session(session_id)['df']
 
 
-def get_df() -> pd.DataFrame:
-    global _df
-    if _df is None:
-        _df = load_data()
-    return _df
+def reload_tab3_current(file_bytes: bytes, session_id: str) -> None:
+    session = _get_session(session_id)
+    session['tab3_current'] = _parse_excel(io.BytesIO(file_bytes))
+    _bump_version(session_id)
 
 
-def apply_filters(df, stages, ontime_delay, delay_category, months, supplier_names=None):
+def reload_tab3_previous(file_bytes: bytes, session_id: str) -> None:
+    session = _get_session(session_id)
+    session['tab3_previous'] = _parse_excel(io.BytesIO(file_bytes))
+    _bump_version(session_id)
+
+
+def get_tab3_current_df(session_id: str):
+    return _get_session(session_id)['tab3_current']
+
+
+def get_tab3_previous_df(session_id: str):
+    return _get_session(session_id)['tab3_previous']
+
+
+def apply_filters(df, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
     if supplier_names:
         df = df[df["Supplier Name"].isin(supplier_names)]
     if stages:
@@ -107,11 +146,17 @@ def apply_filters(df, stages, ontime_delay, delay_category, months, supplier_nam
         df = df[df["Delay Category"].isin(delay_category)]
     if months:
         df = df[df["Month"].isin(months)]
+    if item_number and item_number.strip():
+        df = df[df["Item #"].astype(str).str.contains(item_number.strip(), case=False, na=False)]
+    if po_number and po_number.strip():
+        df = df[df["PO #"].astype(str).str.contains(po_number.strip(), case=False, na=False)]
     return df
 
 
-def get_filter_options():
-    df = get_df()
+def get_filter_options(session_id: str):
+    df = get_df(session_id)
+    if df.empty or "Supplier Name" not in df.columns:
+        return {"supplier_names": [], "stages": [], "ontime_delay": [], "delay_category": [], "months": []}
     month_df = (
         df.dropna(subset=["Month"])
         .drop_duplicates(subset=["Month", "Month_Sort"])
@@ -126,14 +171,13 @@ def get_filter_options():
     }
 
 
-def get_pivot1_data(stages, ontime_delay, delay_category, months, supplier_names=None):
-    full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
+def get_pivot1_data(session_id, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
+    full_df = get_df(session_id)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
     if df.empty:
         return {"rows": [], "columns": ["Stages", "Total"]}
 
-    # Month column order from the FULL dataset so all months always appear as headers
     month_order = (
         full_df.dropna(subset=["Month"])
         .drop_duplicates(["Month", "Month_Sort"])
@@ -171,9 +215,11 @@ def get_pivot1_data(stages, ontime_delay, delay_category, months, supplier_names
         "rows": rows,
         "columns": ["Stages"] + month_order + ["Total"],
     }
-def get_pivot2_data(stages, ontime_delay, delay_category, months, supplier_names=None):
-    full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
+
+
+def get_pivot2_data(session_id, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
+    full_df = get_df(session_id)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
     if df.empty:
         return {"rows": [], "columns": ["Stages", "Total"]}
@@ -188,7 +234,6 @@ def get_pivot2_data(stages, ontime_delay, delay_category, months, supplier_names
     valid = df.dropna(subset=["Month"])
     all_stages = sorted(valid["Stages"].dropna().unique().tolist())
 
-    # Month totals (denominator for % calculation)
     month_totals = {m: int((valid["Month"] == m).sum()) for m in month_order}
     grand_total  = sum(month_totals.values())
 
@@ -219,29 +264,27 @@ def get_pivot2_data(stages, ontime_delay, delay_category, months, supplier_names
     return {"rows": rows, "columns": ["Stages"] + month_order + ["Total"]}
 
 
-def get_pivot4_data(stages, ontime_delay, delay_category, months, supplier_names=None):
-    full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
+def get_pivot4_data(session_id, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
+    full_df = get_df(session_id)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
     if df.empty:
         return {"rows": [], "columns": ["Metric", "Total"]}
 
-    # All months from full dataset (chronological) for column headers
     month_meta = (
         full_df.dropna(subset=["Month"])
         .drop_duplicates(["Month", "Month_Sort"])
         .sort_values("Month_Sort")
     )
-    month_order   = month_meta["Month"].tolist()
+    month_order    = month_meta["Month"].tolist()
     month_sort_map = month_meta.set_index("Month")["Month_Sort"].to_dict()
 
     valid = df.dropna(subset=["Month"])
 
     def pct(n, d): return round(n / d * 100, 1) if d else 0.0
 
-    OTD_START = "2026-04"  # % OTD rows only calculated for April 2026 onwards
+    OTD_START = "2026-04"
 
-    # Per-month counts
     month_stats = {}
     for month in month_order:
         mdf = valid[valid["Month"] == month]
@@ -254,13 +297,10 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months, supplier_names
         m_sort = month_sort_map.get(month, "")
 
         if m_sort >= OTD_START:
-            # % OTD with Past Due — cumulative: on_time where due ≤ M / total where due ≤ M
             cum_df  = valid[valid["Month_Sort"] <= m_sort]
             cum_tot = len(cum_df)
             cum_on  = int((cum_df["Ontime/Delay"].str.strip().str.lower() == "on time").sum())
             otd_with = pct(cum_on, cum_tot)
-
-            # % OTD without Past Due — monthly: on_time where due = M / total where due = M
             otd_without = pct(ontime, total)
         else:
             otd_with    = 0.0
@@ -275,7 +315,6 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months, supplier_names
             "otd_without": otd_without,
         }
 
-    # Grand-total column
     t_ontime   = sum(v["ontime"]   for v in month_stats.values())
     t_delay    = sum(v["delay"]    for v in month_stats.values())
     t_past_due = sum(v["past_due"] for v in month_stats.values())
@@ -301,10 +340,10 @@ def get_pivot4_data(stages, ontime_delay, delay_category, months, supplier_names
     return {"rows": rows, "columns": ["Metric"] + month_order + ["Total"]}
 
 
-def get_chart2_data(stages, ontime_delay, delay_category, months, supplier_names=None):
-    full_df = get_df()
-    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months, supplier_names)
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
+def get_chart2_data(session_id, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
+    full_df = get_df(session_id)
+    denom_df = apply_filters(full_df, None, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
     if df.empty:
         return {"data": [], "stages": []}
@@ -337,9 +376,9 @@ def get_chart2_data(stages, ontime_delay, delay_category, months, supplier_names
     return {"data": chart_records, "stages": all_stages}
 
 
-def get_chart1_data(stages, ontime_delay, delay_category, months, supplier_names=None):
-    df = get_df()
-    df = apply_filters(df, stages, ontime_delay, delay_category, months, supplier_names)
+def get_chart1_data(session_id, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
+    df = get_df(session_id)
+    df = apply_filters(df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
     if df.empty:
         return {"data": [], "stages": []}
@@ -352,7 +391,6 @@ def get_chart1_data(stages, ontime_delay, delay_category, months, supplier_names
         .sort_values("Month_Sort")
     )
 
-    # Build chart records: [{Month: "Mar 2026", "Stage1": n, "Stage2": n, ...}]
     chart_records = []
     for (month_sort, month), group in grouped.groupby(["Month_Sort", "Month"], sort=False):
         record = {"Month": month}
@@ -363,27 +401,10 @@ def get_chart1_data(stages, ontime_delay, delay_category, months, supplier_names
     return {"data": chart_records, "stages": all_stages}
 
 
-def reload_tab3_current(file_bytes: bytes) -> None:
-    global _tab3_current_df
-    _tab3_current_df = _parse_excel(io.BytesIO(file_bytes))
-
-
-def reload_tab3_previous(file_bytes: bytes) -> None:
-    global _tab3_previous_df
-    _tab3_previous_df = _parse_excel(io.BytesIO(file_bytes))
-
-
-def get_tab3_current_df():
-    return _tab3_current_df
-
-
-def get_tab3_previous_df():
-    return _tab3_previous_df
-
-
-def get_pivot3_data(stages=None, ontime_delay=None, delay_category=None, months=None, supplier_names=None):
-    curr_df = _tab3_current_df
-    prev_df = _tab3_previous_df
+def get_pivot3_data(session_id, stages=None, ontime_delay=None, delay_category=None, months=None, supplier_names=None, item_number=None, po_number=None):
+    session = _get_session(session_id)
+    curr_df = session['tab3_current']
+    prev_df = session['tab3_previous']
 
     has_current  = curr_df is not None and not curr_df.empty
     has_previous = prev_df is not None and not prev_df.empty
@@ -392,20 +413,14 @@ def get_pivot3_data(stages=None, ontime_delay=None, delay_category=None, months=
         return {"stages": [], "months": [], "data": {}, "grand_total": {},
                 "has_current": False, "has_previous": False}
 
-    # Apply filters to working copies (preserve originals for has_* flags)
-    f_curr = apply_filters(curr_df, stages, ontime_delay, delay_category, months, supplier_names) if has_current  else curr_df
-    f_prev = apply_filters(prev_df, stages, ontime_delay, delay_category, months, supplier_names) if has_previous else prev_df
+    f_curr = apply_filters(curr_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number) if has_current  else curr_df
+    f_prev = apply_filters(prev_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number) if has_previous else prev_df
 
-    # Union of months from both DataFrames, sorted chronologically
     month_parts = []
     if has_current:
-        month_parts.append(
-            f_curr.dropna(subset=["Month"]).drop_duplicates(["Month", "Month_Sort"])
-        )
+        month_parts.append(f_curr.dropna(subset=["Month"]).drop_duplicates(["Month", "Month_Sort"]))
     if has_previous:
-        month_parts.append(
-            f_prev.dropna(subset=["Month"]).drop_duplicates(["Month", "Month_Sort"])
-        )
+        month_parts.append(f_prev.dropna(subset=["Month"]).drop_duplicates(["Month", "Month_Sort"]))
     month_order = (
         pd.concat(month_parts)
         .drop_duplicates(["Month", "Month_Sort"])
@@ -413,7 +428,6 @@ def get_pivot3_data(stages=None, ontime_delay=None, delay_category=None, months=
         .tolist()
     ) if month_parts else []
 
-    # Union of stages from both filtered DataFrames
     stages_set = set()
     if has_current:
         stages_set.update(f_curr["Stages"].dropna().unique())
@@ -446,9 +460,9 @@ def get_pivot3_data(stages=None, ontime_delay=None, delay_category=None, months=
     }
 
 
-def get_pivot5_data(stages, ontime_delay, delay_category, months, supplier_names=None):
-    full_df = get_df()
-    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names)
+def get_pivot5_data(session_id, stages, ontime_delay, delay_category, months, supplier_names=None, item_number=None, po_number=None):
+    full_df = get_df(session_id)
+    df = apply_filters(full_df, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
     if df.empty:
         return {"rows": [], "columns": ["Metric", "Total"]}
@@ -460,7 +474,6 @@ def get_pivot5_data(stages, ontime_delay, delay_category, months, supplier_names
         .tolist()
     )
 
-    # Build Month → Month_Sort mapping for cumulative logic
     month_meta = (
         full_df.dropna(subset=["Month"])
         .drop_duplicates(["Month", "Month_Sort"])
@@ -473,23 +486,18 @@ def get_pivot5_data(stages, ontime_delay, delay_category, months, supplier_names
     delay_counts    = {}
     past_due_counts = {}
     for month in month_order:
-        # Delay Line: cumulative — Ontime/Delay = "Delay" AND due month ≤ M
         m_sort  = month_meta.get(month, "")
         cum_df  = valid[valid["Month_Sort"] <= m_sort] if m_sort else valid.iloc[:0]
         cum_norm = cum_df["Ontime/Delay"].str.strip().str.lower()
         delay_counts[month] = int((cum_norm == "delay").sum())
-
-        # Total Past Due Lines: cumulative — due month ≤ M AND Ontime/Delay = "Delay"
         past_due_counts[month] = delay_counts[month]
 
-    # Docking Lines: records where Dock Month = M
     dock_valid  = df.dropna(subset=["Dock_Month_Label"])
     dock_series = dock_valid.groupby("Dock_Month_Label").size()
     dock_counts = {m: int(dock_series.get(m, 0)) for m in month_order}
 
     t_delay    = sum(delay_counts.values())
     t_dock     = sum(dock_counts.values())
-    # Total for past due = last month's cumulative (grand total of delayed)
     t_past_due = past_due_counts[month_order[-1]] if month_order else 0
 
     total_counts = {m: int((valid["Month"] == m).sum()) for m in month_order}

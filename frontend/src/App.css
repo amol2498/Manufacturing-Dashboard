@@ -156,6 +156,70 @@ body {
   box-shadow: 0 0 0 2px rgba(29,78,216,0.15);
 }
 
+.search-filter {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.search-filter__input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 7px;
+  font-size: 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  outline: none;
+  background: #fff;
+}
+
+.search-filter__input:focus {
+  border-color: #1D4ED8;
+  box-shadow: 0 0 0 2px rgba(29,78,216,0.15);
+}
+
+.search-filter__btn {
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #1D4ED8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.search-filter__btn:hover {
+  background: #1e40af;
+}
+
+.search-filter__clear {
+  padding: 4px 6px;
+  font-size: 11px;
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.search-filter__clear:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.search-filter__active {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #1D4ED8;
+  font-weight: 600;
+  word-break: break-all;
+}
+
 .filter-option {
   display: flex;
   align-items: flex-start;
@@ -452,6 +516,73 @@ body {
   border-radius: 6px;
   padding: 14px 18px;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.retry-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+}
+
+/* ────────────────────────────────────────
+   Connecting overlay (cold-start splash)
+──────────────────────────────────────── */
+.connecting-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: calc(100vh - 64px);
+}
+
+.connecting-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 48px 64px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+
+.connecting-spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #e2e8f0;
+  border-top-color: #1e3a5f;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.connecting-msg {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e3a5f;
+}
+
+.connecting-sub {
+  font-size: 13px;
+  color: #64748b;
+  text-align: center;
 }
 
 /* ────────────────────────────────────────

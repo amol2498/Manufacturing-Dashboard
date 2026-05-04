@@ -14,51 +14,26 @@ app = FastAPI(title="OTD Risk Dashboard API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "https://otd-dashboard-app.azurewebsites.net"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-FILTER_PARAMS = dict(
-    stages        = Query(default=None),
-    ontime_delay  = Query(default=None),
-    delay_category= Query(default=None),
-    months        = Query(default=None),
-    supplier_names= Query(default=None),
-)
 
-
-@app.get("/api/debug/columns")
-def debug_columns():
-    import data as _data
-    df = _data.get_df()
-    return {"columns": df.columns.tolist()}
-
-
-@app.get("/api/debug/dates")
-def debug_dates():
-    df = data.get_df()
-    nat_count = int(df["Dock Month"].isna().sum())
-    month_counts = (
-        df.dropna(subset=["Month"])
-        .groupby(["Month_Sort", "Month"])
-        .size()
-        .reset_index(name="count")
-        .sort_values("Month_Sort")
-        .to_dict(orient="records")
-    )
-    return {"total_rows": len(df), "unparsed_dock_month_rows": nat_count, "months": month_counts}
+@app.get("/api/data-version")
+def get_data_version(session_id: str = Query(...)):
+    return {"version": data.get_data_version(session_id)}
 
 
 @app.post("/api/upload")
-async def upload_excel(file: UploadFile = File(...)):
+async def upload_excel(session_id: str = Query(...), file: UploadFile = File(...)):
     if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
     try:
         contents = await file.read()
-        data.reload_data(contents)
-        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_df())}
+        data.reload_data(contents, session_id)
+        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_df(session_id))}
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -66,13 +41,13 @@ async def upload_excel(file: UploadFile = File(...)):
 
 
 @app.post("/api/upload-tab3-current")
-async def upload_tab3_current(file: UploadFile = File(...)):
+async def upload_tab3_current(session_id: str = Query(...), file: UploadFile = File(...)):
     if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
     try:
         contents = await file.read()
-        data.reload_tab3_current(contents)
-        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_tab3_current_df())}
+        data.reload_tab3_current(contents, session_id)
+        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_tab3_current_df(session_id))}
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -80,96 +55,117 @@ async def upload_tab3_current(file: UploadFile = File(...)):
 
 
 @app.post("/api/upload-tab3-previous")
-async def upload_tab3_previous(file: UploadFile = File(...)):
+async def upload_tab3_previous(session_id: str = Query(...), file: UploadFile = File(...)):
     if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
     try:
         contents = await file.read()
-        data.reload_tab3_previous(contents)
-        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_tab3_previous_df())}
+        data.reload_tab3_previous(contents, session_id)
+        return {"message": f"'{file.filename}' loaded successfully", "rows": len(data.get_tab3_previous_df(session_id))}
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
 
 
-@app.get("/api/pivot3")
-def get_pivot3(
-    stages: Optional[List[str]] = Query(default=None),
-    ontime_delay: Optional[List[str]] = Query(default=None),
-    delay_category: Optional[List[str]] = Query(default=None),
-    months: Optional[List[str]] = Query(default=None),
-    supplier_names: Optional[List[str]] = Query(default=None),
-):
-    return data.get_pivot3_data(stages, ontime_delay, delay_category, months, supplier_names)
-
-
 @app.get("/api/filters")
-def get_filters():
-    return data.get_filter_options()
+def get_filters(session_id: str = Query(...)):
+    return data.get_filter_options(session_id)
 
 
 @app.get("/api/pivot1")
 def get_pivot1(
+    session_id: str = Query(...),
     stages: Optional[List[str]] = Query(default=None),
     ontime_delay: Optional[List[str]] = Query(default=None),
     delay_category: Optional[List[str]] = Query(default=None),
     months: Optional[List[str]] = Query(default=None),
     supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
 ):
-    return data.get_pivot1_data(stages, ontime_delay, delay_category, months, supplier_names)
+    return data.get_pivot1_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
 
 @app.get("/api/pivot2")
 def get_pivot2(
+    session_id: str = Query(...),
     stages: Optional[List[str]] = Query(default=None),
     ontime_delay: Optional[List[str]] = Query(default=None),
     delay_category: Optional[List[str]] = Query(default=None),
     months: Optional[List[str]] = Query(default=None),
     supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
 ):
-    return data.get_pivot2_data(stages, ontime_delay, delay_category, months, supplier_names)
+    return data.get_pivot2_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
+
+
+@app.get("/api/pivot3")
+def get_pivot3(
+    session_id: str = Query(...),
+    stages: Optional[List[str]] = Query(default=None),
+    ontime_delay: Optional[List[str]] = Query(default=None),
+    delay_category: Optional[List[str]] = Query(default=None),
+    months: Optional[List[str]] = Query(default=None),
+    supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
+):
+    return data.get_pivot3_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
 
 @app.get("/api/pivot4")
 def get_pivot4(
+    session_id: str = Query(...),
     stages: Optional[List[str]] = Query(default=None),
     ontime_delay: Optional[List[str]] = Query(default=None),
     delay_category: Optional[List[str]] = Query(default=None),
     months: Optional[List[str]] = Query(default=None),
     supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
 ):
-    return data.get_pivot4_data(stages, ontime_delay, delay_category, months, supplier_names)
-
-
-@app.get("/api/chart2")
-def get_chart2(
-    stages: Optional[List[str]] = Query(default=None),
-    ontime_delay: Optional[List[str]] = Query(default=None),
-    delay_category: Optional[List[str]] = Query(default=None),
-    months: Optional[List[str]] = Query(default=None),
-    supplier_names: Optional[List[str]] = Query(default=None),
-):
-    return data.get_chart2_data(stages, ontime_delay, delay_category, months, supplier_names)
+    return data.get_pivot4_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
 
 @app.get("/api/pivot5")
 def get_pivot5(
+    session_id: str = Query(...),
     stages: Optional[List[str]] = Query(default=None),
     ontime_delay: Optional[List[str]] = Query(default=None),
     delay_category: Optional[List[str]] = Query(default=None),
     months: Optional[List[str]] = Query(default=None),
     supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
 ):
-    return data.get_pivot5_data(stages, ontime_delay, delay_category, months, supplier_names)
+    return data.get_pivot5_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
 
 @app.get("/api/chart1")
 def get_chart1(
+    session_id: str = Query(...),
     stages: Optional[List[str]] = Query(default=None),
     ontime_delay: Optional[List[str]] = Query(default=None),
     delay_category: Optional[List[str]] = Query(default=None),
     months: Optional[List[str]] = Query(default=None),
     supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
 ):
-    return data.get_chart1_data(stages, ontime_delay, delay_category, months, supplier_names)
+    return data.get_chart1_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
+
+
+@app.get("/api/chart2")
+def get_chart2(
+    session_id: str = Query(...),
+    stages: Optional[List[str]] = Query(default=None),
+    ontime_delay: Optional[List[str]] = Query(default=None),
+    delay_category: Optional[List[str]] = Query(default=None),
+    months: Optional[List[str]] = Query(default=None),
+    supplier_names: Optional[List[str]] = Query(default=None),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
+):
+    return data.get_chart2_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)

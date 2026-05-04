@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import FilterPanel from './components/FilterPanel'
 import Tab1 from './components/Tab1'
 import DummyTab from './components/DummyTab'
@@ -7,6 +7,7 @@ import Tab2 from './components/Tab2'
 import Tab4 from './components/Tab4'
 import Tab5 from './components/Tab5'
 import UploadWidget from './components/UploadWidget'
+import { fetchDataVersion } from './api/client'
 import './App.css'
 
 /**
@@ -30,6 +31,8 @@ const INITIAL_FILTERS = {
   ontime_delay: [],
   delay_category: [],
   months: [],
+  item_number: '',
+  po_number: '',
 }
 
 export default function App() {
@@ -44,11 +47,39 @@ export default function App() {
   }
   const [filters, setFilters] = useState(INITIAL_FILTERS)
   const [filterKey, setFilterKey] = useState(0)
+  const [backendReady, setBackendReady] = useState(false)
+  const isReady = useRef(false)
+  const knownVersion = useRef(null)
 
-  const handleUploadSuccess = () => {
+  const handleUploadSuccess = (newVersion) => {
+    if (newVersion !== undefined) knownVersion.current = newVersion
     setFilters(INITIAL_FILTERS)
     setFilterKey(k => k + 1)
   }
+
+  useEffect(() => {
+    let cancelled = false
+    const poll = async () => {
+      try {
+        const { version } = await fetchDataVersion()
+        if (cancelled) return
+        if (!isReady.current) {
+          isReady.current = true
+          knownVersion.current = version
+          setBackendReady(true)
+        } else if (version !== knownVersion.current) {
+          knownVersion.current = version
+          setFilters(INITIAL_FILTERS)
+          setFilterKey(k => k + 1)
+        }
+      } catch {
+        // keep polling — backend still starting up
+      }
+    }
+    poll()
+    const id = setInterval(poll, 5000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   return (
     <div className="app">
@@ -62,38 +93,49 @@ export default function App() {
         <div className="header-badge">Dashboard</div>
       </header>
 
-      {/* ── Main layout: sidebar + content ── */}
-      <div className="main-layout">
-        {/* Left sidebar – Filters */}
-        <aside className="sidebar">
-          <FilterPanel key={filterKey} filters={filters} onFilterChange={setFilters} />
-        </aside>
-
-        {/* Right area – Tabs + content */}
-        <main className="content">
-          {/* Tab bar */}
-          <div className="tab-bar">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => handleTabChange(tab.id)}
-              >
-                <span className="tab-label">{tab.label}</span>
-              </button>
-            ))}
+      {/* ── Connecting splash — shown during B1 cold start ── */}
+      {!backendReady ? (
+        <div className="connecting-overlay">
+          <div className="connecting-box">
+            <div className="connecting-spinner" />
+            <p className="connecting-msg">Connecting to server, please wait…</p>
+            <p className="connecting-sub">The server may take up to 2 minutes to start on first load.</p>
           </div>
+        </div>
+      ) : (
+        /* ── Main layout: sidebar + content ── */
+        <div className="main-layout">
+          {/* Left sidebar – Filters */}
+          <aside className="sidebar">
+            <FilterPanel key={filterKey} filters={filters} onFilterChange={setFilters} />
+          </aside>
 
-          {/* Tab content */}
-          <div className="tab-content">
-            {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
-            {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
-            {activeTab === 3 && <Tab3 filters={filters} />}
-            {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
-            {activeTab === 5 && <Tab5 key={filterKey} filters={filters} />}
-          </div>
-        </main>
-      </div>
+          {/* Right area – Tabs + content */}
+          <main className="content">
+            {/* Tab bar */}
+            <div className="tab-bar">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => handleTabChange(tab.id)}
+                >
+                  <span className="tab-label">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div className="tab-content">
+              {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
+              {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
+              {activeTab === 3 && <Tab3 filters={filters} />}
+              {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
+              {activeTab === 5 && <Tab5 key={filterKey} filters={filters} />}
+            </div>
+          </main>
+        </div>
+      )}
     </div>
   )
 }

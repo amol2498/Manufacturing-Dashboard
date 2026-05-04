@@ -10,12 +10,23 @@ export default function FilterPanel({ filters, onFilterChange }) {
     months: [],
   })
   const [error, setError] = useState(null)
+  const [localItemNumber, setLocalItemNumber] = useState(filters.item_number || '')
+  const [localPoNumber, setLocalPoNumber]     = useState(filters.po_number   || '')
 
   useEffect(() => {
     fetchFilters()
       .then(setOptions)
       .catch(() => setError('Could not load filters. Is the backend running?'))
   }, [])
+
+  const applySearch = (key, value) => {
+    onFilterChange({ ...filters, [key]: value })
+  }
+
+  const clearSearch = (key, setter) => {
+    setter('')
+    onFilterChange({ ...filters, [key]: '' })
+  }
 
   const toggle = (key, value) => {
     const current = filters[key] || []
@@ -54,6 +65,64 @@ export default function FilterPanel({ filters, onFilterChange }) {
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+      </div>
+
+      {/* Item # — text search */}
+      <div className="filter-group">
+        <h4>Item #</h4>
+        <div className="search-filter">
+          <input
+            type="text"
+            className="search-filter__input"
+            placeholder="Search Item #…"
+            value={localItemNumber}
+            onChange={e => setLocalItemNumber(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && applySearch('item_number', localItemNumber)}
+          />
+          <button
+            className="search-filter__btn"
+            onClick={() => applySearch('item_number', localItemNumber)}
+          >Search</button>
+          {filters.item_number && (
+            <button
+              className="search-filter__clear"
+              title="Clear"
+              onClick={() => clearSearch('item_number', setLocalItemNumber)}
+            >✕</button>
+          )}
+        </div>
+        {filters.item_number && (
+          <span className="search-filter__active">Active: {filters.item_number}</span>
+        )}
+      </div>
+
+      {/* PO # — text search */}
+      <div className="filter-group">
+        <h4>PO #</h4>
+        <div className="search-filter">
+          <input
+            type="text"
+            className="search-filter__input"
+            placeholder="Search PO #…"
+            value={localPoNumber}
+            onChange={e => setLocalPoNumber(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && applySearch('po_number', localPoNumber)}
+          />
+          <button
+            className="search-filter__btn"
+            onClick={() => applySearch('po_number', localPoNumber)}
+          >Search</button>
+          {filters.po_number && (
+            <button
+              className="search-filter__clear"
+              title="Clear"
+              onClick={() => clearSearch('po_number', setLocalPoNumber)}
+            >✕</button>
+          )}
+        </div>
+        {filters.po_number && (
+          <span className="search-filter__active">Active: {filters.po_number}</span>
+        )}
       </div>
 
       <FilterGroup

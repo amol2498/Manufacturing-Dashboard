@@ -72,14 +72,20 @@ export default function Tab3({ filters }) {
   const refreshPivot = useCallback(async () => {
     setLoading(true)
     setError('')
-    try {
-      const data = await fetchPivot3(filters)
-      setPivotData(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    let lastErr
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt))
+      try {
+        const data = await fetchPivot3(filters)
+        setPivotData(data)
+        setLoading(false)
+        return
+      } catch (err) {
+        lastErr = err
+      }
     }
+    setError(lastErr.message)
+    setLoading(false)
   }, [filters])
 
   useEffect(() => { refreshPivot() }, [refreshPivot])
@@ -100,7 +106,12 @@ export default function Tab3({ filters }) {
       </div>
 
       {loading && <div className="loading">Loading…</div>}
-      {error   && <div className="error-msg">{error}</div>}
+      {error && (
+        <div className="error-msg">
+          <span><strong>Week-over-Week error:</strong> {error}</span>
+          <button className="retry-btn" onClick={refreshPivot}>Retry</button>
+        </div>
+      )}
       {pivotData && pivotData.has_current && pivotData.has_previous && pivotData.stages.length > 0 && (
         <>
           <div className="section-toolbar">

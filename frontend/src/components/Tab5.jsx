@@ -10,17 +10,18 @@ export default function Tab5({ filters }) {
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState(null)
   const [showChart, setShowChart] = useState(true)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     setLoading(true)
     setError(null)
     fetchPivot5(filters)
       .then(setPivotData)
-      .catch(() => setError('Failed to load data. Please check that the backend is running on port 8000.'))
+      .catch(() => setError('Could not reach the server. The backend may be starting up — please retry in a moment.'))
       .finally(() => setLoading(false))
-  }, [JSON.stringify(filters)])
+  }, [JSON.stringify(filters), retryCount])
 
-  if (error)   return <div className="section"><div className="error-msg">{error}</div></div>
+  if (error)   return <div className="section"><div className="error-msg">{error} <button className="retry-btn" onClick={() => setRetryCount(c => c + 1)}>Retry</button></div></div>
   if (loading) return <div className="section"><div className="loading">Loading data…</div></div>
 
   const totalLines = pivotData.rows?.find(r => r['Metric'] === 'Total Lines')?.Total ?? 0

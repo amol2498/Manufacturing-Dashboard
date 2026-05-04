@@ -11,6 +11,7 @@ export default function Tab2({ filters }) {
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState(null)
   const [showChart, setShowChart] = useState(true)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -20,11 +21,11 @@ export default function Tab2({ filters }) {
         setPivotData(pivot)
         setChartData(chart)
       })
-      .catch(() => setError('Failed to load data. Please check that the backend is running on port 8000.'))
+      .catch(() => setError('Could not reach the server. The backend may be starting up — please retry in a moment.'))
       .finally(() => setLoading(false))
-  }, [JSON.stringify(filters)])
+  }, [JSON.stringify(filters), retryCount])
 
-  if (error)   return <div className="section"><div className="error-msg">{error}</div></div>
+  if (error)   return <div className="section"><div className="error-msg">{error} <button className="retry-btn" onClick={() => setRetryCount(c => c + 1)}>Retry</button></div></div>
   if (loading) return <div className="section"><div className="loading">Loading data…</div></div>
 
   return (

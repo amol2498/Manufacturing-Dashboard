@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { uploadExcel } from '../api/client'
+import { uploadExcel, fetchDataVersion } from '../api/client'
 
 export default function UploadWidget({ onUploadSuccess }) {
   const inputRef = useRef(null)
@@ -15,7 +15,14 @@ export default function UploadWidget({ onUploadSuccess }) {
       const result = await uploadExcel(file)
       setStatus('success')
       setMessage(`${file.name} (${result.rows} rows)`)
-      onUploadSuccess()
+      let newVersion
+      try {
+        const { version } = await fetchDataVersion()
+        newVersion = version
+      } catch {
+        // version fetch failed — upload still succeeded
+      }
+      onUploadSuccess(newVersion)
     } catch (err) {
       setStatus('error')
       setMessage(err.message)
