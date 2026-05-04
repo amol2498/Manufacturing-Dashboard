@@ -60,7 +60,7 @@ export default function Tab1({ filters }) {
             disabled={!pivotData.rows?.length}
           />
         </div>
-        <PivotTable1 data={pivotData} />
+        <PivotTable1 data={pivotData} filters={filters} />
       </div>
 
       <div className="section">

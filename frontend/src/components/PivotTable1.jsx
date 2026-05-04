@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom'
+
 /**
  * PivotTable1 – PO Line count pivot table.
  * Rows = Stages (Column I), Columns = Months (Mar'26, Apr'26 …) + Total.
@@ -5,7 +7,8 @@
  */
 const STAGE_COL = 'Stages'
 
-export default function PivotTable1({ data }) {
+export default function PivotTable1({ data, filters }) {
+  const navigate = useNavigate()
   const { rows, columns } = data
 
   if (!rows || rows.length === 0) {
@@ -13,6 +16,15 @@ export default function PivotTable1({ data }) {
   }
 
   const monthCols = columns.filter(c => c !== STAGE_COL && c !== 'Total')
+
+  const handleCellClick = (month, stage) => {
+    if (month && stage) {
+      const params = new URLSearchParams({ month, stage })
+      if (filters?.item_number?.trim()) params.set('item_number', filters.item_number.trim())
+      if (filters?.po_number?.trim()) params.set('po_number', filters.po_number.trim())
+      navigate(`/records?${params.toString()}`)
+    }
+  }
 
   return (
     <div className="table-container">
@@ -34,7 +46,18 @@ export default function PivotTable1({ data }) {
                 <td className="col-stage">{row[STAGE_COL]}</td>
                 {monthCols.map(col => (
                   <td key={col} className="col-number">
-                    {row[col] ? row[col] : ''}
+                    {row[col] ? (
+                      <a
+                        href="#"
+                        className="cell-link"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleCellClick(col, row[STAGE_COL])
+                        }}
+                      >
+                        {row[col]}
+                      </a>
+                    ) : ''}
                   </td>
                 ))}
                 <td className="col-number col-total-cell">

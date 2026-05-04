@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import FilterPanel from './components/FilterPanel'
 import Tab1 from './components/Tab1'
 import DummyTab from './components/DummyTab'
@@ -6,6 +7,7 @@ import Tab3 from './components/Tab3'
 import Tab2 from './components/Tab2'
 import Tab4 from './components/Tab4'
 import Tab5 from './components/Tab5'
+import RecordsPage from './components/RecordsPage'
 import UploadWidget from './components/UploadWidget'
 import { fetchDataVersion } from './api/client'
 import './App.css'
@@ -56,7 +58,6 @@ export default function App() {
     setFilters(INITIAL_FILTERS)
     setFilterKey(k => k + 1)
   }
-
   useEffect(() => {
     let cancelled = false
     const poll = async () => {
@@ -82,60 +83,65 @@ export default function App() {
   }, [])
 
   return (
-    <div className="app">
-      {/* ── Header ── */}
-      <header className="header">
-        <div>
-          <h1 className="header-title">Proactive OTD Risk Line Identification</h1>
-          <span className="header-sub">Supplier: Indo-Mim &nbsp;|&nbsp; Site: Niles</span>
-        </div>
-        <UploadWidget onUploadSuccess={handleUploadSuccess} />
-        <div className="header-badge">Dashboard</div>
-      </header>
-
-      {/* ── Connecting splash — shown during B1 cold start ── */}
-      {!backendReady ? (
-        <div className="connecting-overlay">
-          <div className="connecting-box">
-            <div className="connecting-spinner" />
-            <p className="connecting-msg">Connecting to server, please wait…</p>
-            <p className="connecting-sub">The server may take up to 2 minutes to start on first load.</p>
-          </div>
-        </div>
-      ) : (
-        /* ── Main layout: sidebar + content ── */
-        <div className="main-layout">
-          {/* Left sidebar – Filters */}
-          <aside className="sidebar">
-            <FilterPanel key={filterKey} filters={filters} onFilterChange={setFilters} />
-          </aside>
-
-          {/* Right area – Tabs + content */}
-          <main className="content">
-            {/* Tab bar */}
-            <div className="tab-bar">
-              {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => handleTabChange(tab.id)}
-                >
-                  <span className="tab-label">{tab.label}</span>
-                </button>
-              ))}
+    <Routes>
+      <Route path="/records" element={<RecordsPage />} />
+      <Route path="/" element={
+        <div className="app">
+          {/* ── Header ── */}
+          <header className="header">
+            <div>
+              <h1 className="header-title">Proactive OTD Risk Line Identification</h1>
+              <span className="header-sub">Supplier: Indo-Mim &nbsp;|&nbsp; Site: Niles</span>
             </div>
+            <UploadWidget onUploadSuccess={handleUploadSuccess} />
+            <div className="header-badge">Dashboard</div>
+          </header>
 
-            {/* Tab content */}
-            <div className="tab-content">
-              {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
-              {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
-              {activeTab === 3 && <Tab3 filters={filters} />}
-              {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
-              {activeTab === 5 && <Tab5 key={filterKey} filters={filters} />}
+          {/* ── Connecting splash — shown during B1 cold start ── */}
+          {!backendReady ? (
+            <div className="connecting-overlay">
+              <div className="connecting-box">
+                <div className="connecting-spinner" />
+                <p className="connecting-msg">Connecting to server, please wait…</p>
+                <p className="connecting-sub">The server may take up to 2 minutes to start on first load.</p>
+              </div>
             </div>
-          </main>
+          ) : (
+            /* ── Main layout: sidebar + content ── */
+            <div className="main-layout">
+              {/* Left sidebar – Filters */}
+              <aside className="sidebar">
+                <FilterPanel key={filterKey} filters={filters} onFilterChange={setFilters} />
+              </aside>
+
+              {/* Right area – Tabs + content */}
+              <main className="content">
+                {/* Tab bar */}
+                <div className="tab-bar">
+                  {TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                      onClick={() => handleTabChange(tab.id)}
+                    >
+                      <span className="tab-label">{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab content */}
+                <div className="tab-content">
+                  {activeTab === 1 && <Tab1 key={filterKey} filters={filters} />}
+                  {activeTab === 2 && <Tab2 key={filterKey} filters={filters} />}
+                  {activeTab === 3 && <Tab3 filters={filters} />}
+                  {activeTab === 4 && <Tab4 key={filterKey} filters={filters} />}
+                  {activeTab === 5 && <Tab5 key={filterKey} filters={filters} />}
+                </div>
+              </main>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      } />
+    </Routes>
   )
 }

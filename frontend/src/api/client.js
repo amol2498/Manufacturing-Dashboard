@@ -3,7 +3,7 @@
  * Converts filter state into query params and fetches data from the Python backend.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL
+const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 // One UUID per browser tab, persisted across page refreshes within the same tab.
 const SESSION_ID = (() => {
@@ -91,6 +91,16 @@ export async function uploadExcel(file) {
   const formData = new FormData()
   formData.append('file', file)
   return apiFetch(`${BASE_URL}/upload?session_id=${SESSION_ID}`, { method: 'POST', body: formData })
+}
+
+export async function fetchRecords(filters) {
+  const params = new URLSearchParams()
+  params.append('session_id', SESSION_ID)
+  if (filters.month) params.append('month', filters.month)
+  if (filters.stage) params.append('stage', filters.stage)
+  if (filters.item_number?.trim()) params.append('item_number', filters.item_number.trim())
+  if (filters.po_number?.trim()) params.append('po_number', filters.po_number.trim())
+  return apiFetch(`/api/records?${params.toString()}`)
 }
 
 export async function uploadTab3Current(file) {

@@ -511,3 +511,19 @@ def get_pivot5_data(session_id, stages, ontime_delay, delay_category, months, su
     ]
 
     return {"rows": rows, "columns": ["Metric"] + month_order + ["Total"]}
+
+
+def get_records_data(session_id, month, stage, item_number=None, po_number=None):
+    df = get_df(session_id)
+    if df.empty or "Month" not in df.columns or "Stages" not in df.columns:
+        return []
+
+    mask = (df["Month"].astype(str) == str(month)) & (df["Stages"].astype(str) == str(stage))
+    filtered_df = df.loc[mask]
+
+    if item_number and item_number.strip():
+        filtered_df = filtered_df[filtered_df["Item #"].astype(str).str.contains(item_number.strip(), case=False, na=False)]
+    if po_number and po_number.strip():
+        filtered_df = filtered_df[filtered_df["PO #"].astype(str).str.contains(po_number.strip(), case=False, na=False)]
+
+    return filtered_df.fillna("").to_dict('records')

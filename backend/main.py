@@ -169,3 +169,14 @@ def get_chart2(
     po_number: Optional[str] = Query(default=None),
 ):
     return data.get_chart2_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
+
+
+@app.get("/api/records")
+def get_records(
+    session_id: str = Query(...),
+    month: str = Query(...),
+    stage: str = Query(...),
+    item_number: Optional[str] = Query(default=None),
+    po_number: Optional[str] = Query(default=None),
+):
+    return data.get_records_data(session_id, month, stage, item_number, po_number)
