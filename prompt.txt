@@ -14,3 +14,13 @@ OTD Rate % -
 New Delays
 Resolved
 Max Days Late
+
+create a new secton in the WoW dashboard page as "Supplier OTD Performanace". This should be above "Week on Week Comparison" section
+
+Create a new dashboard in that section as per attached image. Use the same data - last week and current week.
+
+
+create a new secton in the WoW dashboard page as " Monthly OTD Breakdown". This should be immediately below    "Supplier OTD Performance
+" section. Do not hide any dashboard
+
+Create a new dashboard in that section as per attached image. Use the same data - last week and current week.
