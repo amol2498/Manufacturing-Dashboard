@@ -91,7 +91,6 @@ export default function App() {
           <header className="header">
             <div>
               <h1 className="header-title">Proactive OTD Risk Line Identification</h1>
-              <span className="header-sub">Supplier: Indo-Mim &nbsp;|&nbsp; Site: Niles</span>
             </div>
             <UploadWidget onUploadSuccess={handleUploadSuccess} />
             <div className="header-badge">Dashboard</div>

@@ -100,7 +100,7 @@ export async function fetchRecords(filters) {
   if (filters.stage) params.append('stage', filters.stage)
   if (filters.item_number?.trim()) params.append('item_number', filters.item_number.trim())
   if (filters.po_number?.trim()) params.append('po_number', filters.po_number.trim())
-  return apiFetch(`/api/records?${params.toString()}`)
+  return apiFetch(`${BASE_URL}/records?${params.toString()}`)
 }
 
 export async function uploadTab3Current(file) {

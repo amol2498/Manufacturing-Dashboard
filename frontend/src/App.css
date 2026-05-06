@@ -417,8 +417,9 @@ body {
 
 .cell-link {
   color: #1e3a5f;
-  text-decoration: none;
+  text-decoration: underline;
   font-weight: 500;
+  cursor: pointer;
 }
 
 .cell-link:hover {
