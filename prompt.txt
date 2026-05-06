@@ -1,0 +1,16 @@
+on the Week on Week Comparison pag add 2 file uploading buttons - Last Week Data and Current Week Data which will enable to upload 2 excel files. 
+Read both files and create a report as per attached attached image:
+columns as below:
+Metric:	should display statci metric names as per image
+Last Week: 
+Current Week:	
+Change:	
+Status:
+
+rows as below : 
+Total Lines - show in "Last Week" column show sum on all records of last week. In  "Current Week" column show sum on all records of current week. 
+In column "Change" show %of differece in sum of all last week record and sum of all current week record
+OTD Rate % - 
+New Delays
+Resolved
+Max Days Late

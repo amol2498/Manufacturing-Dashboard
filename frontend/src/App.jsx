@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import SiteHeader from './components/SiteHeader'
 import FilterPanel from './components/FilterPanel'
 import Tab1 from './components/Tab1'
-import DummyTab from './components/DummyTab'
 import Tab3 from './components/Tab3'
 import Tab2 from './components/Tab2'
 import Tab4 from './components/Tab4'
 import Tab5 from './components/Tab5'
 import RecordsPage from './components/RecordsPage'
+import WowDashboard from './components/WowDashboard'
 import UploadWidget from './components/UploadWidget'
 import { fetchDataVersion } from './api/client'
 import './App.css'
@@ -85,16 +86,17 @@ export default function App() {
   return (
     <Routes>
       <Route path="/records" element={<RecordsPage />} />
+      <Route path="/wow-dashboard" element={<WowDashboard />} />
       <Route path="/" element={
         <div className="app">
           {/* ── Header ── */}
-          <header className="header">
+          <SiteHeader>
             <div>
               <h1 className="header-title">Proactive OTD Risk Line Identification</h1>
             </div>
             <UploadWidget onUploadSuccess={handleUploadSuccess} />
             <div className="header-badge">Dashboard</div>
-          </header>
+          </SiteHeader>
 
           {/* ── Connecting splash — shown during B1 cold start ── */}
           {!backendReady ? (

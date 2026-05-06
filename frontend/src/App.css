@@ -59,6 +59,80 @@ body {
   text-transform: uppercase;
 }
 
+/* ── Flyout navigation menu ── */
+.nav-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.nav-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nav-menu-btn:hover,
+.nav-menu-btn.open {
+  background: rgba(255,255,255,0.22);
+}
+
+.nav-menu-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.nav-menu-chevron {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.nav-menu-flyout {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #dde1e7;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  min-width: 220px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.nav-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #1e3a5f;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.nav-menu-item:hover {
+  background: #f0f4fb;
+  font-weight: 600;
+}
+
+.nav-menu-item.active {
+  background: #eef2fa;
+  font-weight: 700;
+  color: #1e3a5f;
+  border-left: 3px solid #1e3a5f;
+}
+
 /* ── Main layout ── */
 .main-layout {
   display: flex;
