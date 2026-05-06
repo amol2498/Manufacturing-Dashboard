@@ -1,4 +1,4 @@
-on the Week on Week Comparison pag add 2 file uploading buttons - Last Week Data and Current Week Data which will enable to upload 2 excel files. 
+on the Week on Week Comparison page add 2 file upload buttons - Last Week Data and Current Week Data which will enable to upload 2 excel files. 
 Read both files and create a report as per attached attached image:
 columns as below:
 Metric:	should display statci metric names as per image
