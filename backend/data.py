@@ -886,6 +886,109 @@ def compute_details_report(cw_df: pd.DataFrame) -> list:
     return rows
 
 
+def compute_wow_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
+    """Compute all Metric-by-Metric comparison data for the WoW Comparison dashboard.
+
+    OTD Rate formula:
+      Numerator   = COUNTIFS(Stage="Shipped", On-Time/Delay="On time")
+      Denominator = COUNTIFS(Stage="Shipped")
+      OTD %       = Numerator / Denominator × 100
+    """
+    cw_raw = cw_df
+    lw_raw = lw_df
+
+    # OTD Rate %: computed on ALL rows (mirrors Excel COUNTIFS over the full sheet range)
+    # COUNTIFS(Stage="Shipped", On-Time/Delay="On time") / COUNTIFS(Stage="Shipped")
+    _lw_stage_raw  = _otdr_col(lw_raw, ['stage', 'stages'], 8)
+    _cw_stage_raw  = _otdr_col(cw_raw, ['stage', 'stages'], 8)
+    _lw_status_raw = _otdr_col(lw_raw, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+    _cw_status_raw = _otdr_col(cw_raw, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+
+    _lw_shipped = _lw_stage_raw == 'shipped'
+    _cw_shipped = _cw_stage_raw == 'shipped'
+    lw_otd = round(float((_lw_shipped & (_lw_status_raw == 'on time')).sum() / _lw_shipped.sum() * 100), 1) if _lw_shipped.sum() > 0 else 0.0
+    cw_otd = round(float((_cw_shipped & (_cw_status_raw == 'on time')).sum() / _cw_shipped.sum() * 100), 1) if _cw_shipped.sum() > 0 else 0.0
+
+    # All other metrics use supplier-filtered rows
+    cw_df = _valid_rows(cw_df)
+    lw_df = _valid_rows(lw_df)
+
+    cw_stage  = _otdr_col(cw_df, ['stage', 'stages'], 8)
+    lw_stage  = _otdr_col(lw_df, ['stage', 'stages'], 8)
+    cw_status = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+    lw_status = _otdr_col(lw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+
+    # Delayed lines
+    lw_delayed_mask = lw_status == 'delay'
+    cw_delayed_mask = cw_status == 'delay'
+    lw_delayed_count = int(lw_delayed_mask.sum())
+    cw_delayed_count = int(cw_delayed_mask.sum())
+
+    # Max days late
+    def _max_days(df):
+        col_lower = {str(c).strip().lower(): c for c in df.columns}
+        col = next((col_lower[k] for k in ['days late', 'days_late', 'dayslate'] if k in col_lower), None)
+        if col:
+            n = pd.to_numeric(df[col], errors='coerce')
+            return int(n.max()) if n.notna().any() else 0
+        return 0
+
+    # Past due: Stage != "Shipped" AND Due Date < TODAY()
+    today = pd.Timestamp.now().normalize()
+
+    def _past_due(raw):
+        stage_s = _otdr_col(raw, ['stage', 'stages'], 8)
+        not_shipped = stage_s != 'shipped'
+        dc = {str(c).replace('\xa0', ' ').strip().lower(): c for c in raw.columns}
+        due_name = next((dc[k] for k in ['due date', 'due_date', 'duedate', 'delivery date', 'planned delivery date'] if k in dc), None)
+        due_s = raw[due_name] if due_name else raw.iloc[:, 6]
+        return int((not_shipped & (_parse_date_column(due_s) < today)).sum())
+
+    # Supplier column
+    def _sup_series(df):
+        dc = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+        col = next((dc[k] for k in ['supplier', 'supplier name'] if k in dc), None)
+        s = df[col] if col else df.iloc[:, 1]
+        return s.astype(str).str.replace('\xa0', ' ').str.strip()
+
+    # Site column
+    def _site_series(df):
+        dc = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+        col = next((dc[k] for k in ['site', 'plant', 'location'] if k in dc), None)
+        s = df[col] if col else df.iloc[:, 2]
+        return s.astype(str).str.replace('\xa0', ' ').str.strip()
+
+    lw_sup  = _sup_series(lw_df)
+    cw_sup  = _sup_series(cw_df)
+    lw_site = _site_series(lw_df)
+    cw_site = _site_series(cw_df)
+
+    def _clean_vals(s):
+        return s[s.notna() & (s != '') & (s.str.lower() != 'nan')].tolist()
+
+    all_suppliers = sorted(set(_clean_vals(lw_sup) + _clean_vals(cw_sup)))
+    all_sites     = sorted(set(_clean_vals(lw_site) + _clean_vals(cw_site)))
+
+    supplier_rows = [
+        {'name': s, 'lw': int(((lw_sup == s) & lw_delayed_mask).sum()), 'cw': int(((cw_sup == s) & cw_delayed_mask).sum())}
+        for s in all_suppliers
+    ]
+    site_rows = [
+        {'name': s, 'lw': int(((lw_site == s) & lw_delayed_mask).sum()), 'cw': int(((cw_site == s) & cw_delayed_mask).sum())}
+        for s in all_sites
+    ]
+
+    return {
+        'total_lines':   {'lw': len(lw_df),         'cw': len(cw_df)},
+        'otd_rate':      {'lw': lw_otd,              'cw': cw_otd},
+        'delayed_lines': {'lw': lw_delayed_count,    'cw': cw_delayed_count},
+        'max_days_late': {'lw': _max_days(lw_df),    'cw': _max_days(cw_df)},
+        'past_due':      {'lw': _past_due(lw_raw),   'cw': _past_due(cw_raw)},
+        'supplier_rows': supplier_rows,
+        'site_rows':     site_rows,
+    }
+
+
 def get_records_data(session_id, month, stage, item_number=None, po_number=None):
     df = get_df(session_id)
     if df.empty or "Month" not in df.columns or "Stages" not in df.columns:

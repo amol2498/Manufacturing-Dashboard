@@ -196,6 +196,20 @@ async def upload_otd_risk(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
 
 
+@app.post("/api/upload-wow-comparison")
+async def upload_wow_comparison(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        cw_df, lw_df = data.parse_otd_risk_sheets(contents)
+        return data.compute_wow_comparison(cw_df, lw_df)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
 @app.post("/api/upload-details")
 async def upload_details(file: UploadFile = File(...)):
     if not (file.filename or "").lower().endswith((".xlsx", ".xls")):

@@ -11,6 +11,7 @@ import RecordsPage from './components/RecordsPage'
 import WowDashboard from './components/WowDashboard'
 import OTDRiskDashboard from './components/OTDRiskDashboard'
 import DetailsDashboard from './components/DetailsDashboard'
+import WowComparisonDashboard from './components/WowComparisonDashboard'
 import UploadWidget from './components/UploadWidget'
 import { fetchDataVersion } from './api/client'
 import './App.css'
@@ -91,6 +92,7 @@ export default function App() {
       <Route path="/wow-dashboard" element={<WowDashboard />} />
       <Route path="/otd-risk-dashboard" element={<OTDRiskDashboard />} />
       <Route path="/details" element={<DetailsDashboard />} />
+      <Route path="/wow-comparison" element={<WowComparisonDashboard />} />
       <Route path="/" element={
         <div className="app">
           {/* ── Header ── */}

@@ -121,6 +121,12 @@ export async function uploadOtdRisk(file) {
   return apiFetch(`${BASE_URL}/upload-otd-risk`, { method: 'POST', body: formData })
 }
 
+export async function uploadWowComparison(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-wow-comparison`, { method: 'POST', body: formData })
+}
+
 export async function uploadDetails(file) {
   const formData = new FormData()
   formData.append('file', file)

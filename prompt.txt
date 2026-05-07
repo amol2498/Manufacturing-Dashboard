@@ -268,3 +268,383 @@ Category Values:
 "Delay"
 "Past Due"
 
+
+
+###################################
+Create a new naigation menu and page named WoW Comaprison. 
+First Dashboard details:
+Name: Metric by Netric dashboard
+
+I now have all the formulas and structure. Let me create a comprehensive prompt and documentation for building a web-based dashboard:
+
+---
+
+# 📊 Week-on-Week (WoW) OTD Comparison Dashboard
+
+## Prompt for Creating a Web-Based Dashboard
+
+```
+Create an interactive web-based dashboard for On-Time Delivery (OTD) Week-on-Week Comparison with the following specifications:
+
+DASHBOARD OVERVIEW:
+Build a supply chain OTD performance tracking dashboard that compares Last Week (LW) data against Current Week (CW) data. The dashboard should display KPIs, supplier performance, site performance, and trend indicators.
+
+DATA STRUCTURE:
+The dashboard requires two data sources (LW_Data and CW_Data) with these columns:
+- Column B: Supplier (e.g., "Indo-MIM", "JJG Aero", "Maini", "PMI")
+- Column C: Site (e.g., "Colorado", "Drakes", "Niles", "Rockford")
+- Column I: Stage (e.g., "Shipped", "Intermediate", "Initial")
+- Column J: On-Time/Delay status ("On time" or "Delay")
+- Column K: Delay Category (e.g., "Past Due", "On time")
+- Column O: Days Late (numeric)
+
+DASHBOARD SECTIONS:
+
+SECTION 1: METRIC-BY-METRIC COMPARISON TABLE
+Headers: Metric | LW Value | CW Value | Δ Change | Signal
+Rows:
+1. Total Lines - Count of all PO lines
+2. OTD Rate % - Percentage of on-time shipments
+3. Delayed Lines - Count of delayed items
+4. Indo-MIM Delayed - Supplier-specific delays
+5. JJG Aero Delayed - Supplier-specific delays
+6. Maini Delayed - Supplier-specific delays
+7. PMI Delayed - Supplier-specific delays
+8. Colorado Delayed - Site-specific delays
+9. Drakes Delayed - Site-specific delays
+10. Max Days Late - Worst delay in days
+11. Past Due Lines - Critical past-due items
+12. Net Delay Change - Overall improvement/worsening
+
+SECTION 2: SUPPLIER DELAY TREND TABLE
+Headers: Supplier | LW Delays | CW Delays | Δ Change | Trend
+Show 7 suppliers with delay counts and trend indicators
+
+VISUAL INDICATORS:
+- ✅ Green: Improved/On track
+- 🟡 Yellow: Monitor/Caution
+- 🔴 Red: Worsened/Critical
+- ▲/▼ arrows for directional changes
+
+INTERACTIVITY:
+- Real-time data refresh capability
+- Responsive design for desktop/tablet
+- Color-coded conditional formatting
+- Hover tooltips showing calculation logic
+```
+
+---
+
+## 📋 Formula Documentation & Explanation
+
+### **Section 1: Metric-by-Metric Comparison (B8:H20)**
+
+| Row | Metric | Formula (LW Value) | Formula (CW Value) | Formula (Δ Change) | Formula (Signal) | Explanation |
+|-----|--------|-------------------|-------------------|-------------------|------------------|-------------|
+| **9** | Total Lines | `=COUNTA(LW_Data!B4:B3000)` | `=COUNTA(CW_Data!B4:B3000)` | `=IFERROR(F9-E9,"")` | `=IF(F9>E9,"▲ More lines","▼ Fewer lines")` | Counts non-empty cells in Supplier column to determine total PO lines |
+| **10** | OTD Rate % | `=COUNTIFS(LW_Data!I4:I1122,"Shipped", LW_Data!J4:J1122,"On time") / COUNTIFS(LW_Data!I4:I1122,"Shipped")` | `=COUNTIFS(CW_Data!I4:I985,"Shipped", CW_Data!J4:J985,"On time") / COUNTIFS(CW_Data!I4:I985,"Shipped")` | `=IFERROR(F10-E10,"")` | `=IF(F10>=E10,"✅ Improved","🔴 Declined "&TEXT(ABS(F10-E10),"0.0%"))` | Calculates % of shipped items marked "On time" vs total shipped |
+| **11** | Delayed Lines | `=COUNTIF(LW_Data!J4:J3000,"Delay")` | `=COUNTIF(CW_Data!J4:J3000,"Delay")` | `=IFERROR(F11-E11,"")` | `=IF(F11<=E11,"✅ Improved by "&(E11-F11),"🔴 Worsened +"&(F11-E11))` | Counts all rows with "Delay" status |
+| **12** | Indo-MIM Delayed | `=COUNTIFS(LW_Data!$B$4:$B$3000,"Indo-Mim",LW_Data!$J$4:$J$3000,"Delay")` | `=COUNTIFS(CW_Data!$B$4:$B$3000,"Indo-MIM",CW_Data!$J$4:$J$3000,"Delay")` | `=IFERROR(F12-E12,"")` | `=IF(F12<=E12,"✅ Stable/Better","⚠️ +increase")` | Counts delays for specific supplier |
+| **13** | JJG Aero Delayed | `=COUNTIFS(LW_Data!$B$4:$B$3000,"JJG Aero",LW_Data!$J$4:$J$3000,"Delay")` | `=COUNTIFS(CW_Data!$B$4:$B$3000,"JJG Aero",CW_Data!$J$4:$J$3000,"Delay")` | `=IFERROR(F13-E13,"")` | `=IF(F13<=E13,"✅ Improving","🔴 Escalate — "&F13&" delays")` | Counts delays for JJG Aero supplier |
+| **14** | Maini Delayed | `=COUNTIFS(LW_Data!$B$4:$B$3000,"Maini",LW_Data!$J$4:$J$3000,"Delay")` | `=COUNTIFS(CW_Data!$B$4:$B$3000,"Maini",CW_Data!$J$4:$J$3000,"Delay")` | `=IFERROR(F14-E14,"")` | `=IF(F14<=E14,"✅ Stable","🟡 Monitor — "&F14&" delays")` | Counts delays for Maini supplier |
+| **15** | PMI Delayed | `=COUNTIFS(LW_Data!$B$4:$B$3000,"PMI",LW_Data!$J$4:$J$3000,"Delay")` | `=COUNTIFS(CW_Data!$B$4:$B$3000,"PMI",CW_Data!$J$4:$J$3000,"Delay")` | `=IFERROR(F15-E15,"")` | `=IF(F15<=E15,"✅ Stable","🟡 Monitor — "&F15&" delays")` | Counts delays for PMI supplier |
+| **16** | Colorado Delayed | `=COUNTIFS(LW_Data!$C$4:$C$3000,"Colorado",LW_Data!$J$4:$J$3000,"Delay")` | `=COUNTIFS(CW_Data!$C$4:$C$3000,"Colorado",CW_Data!$J$4:$J$3000,"Delay")` | `=IFERROR(F16-E16,"")` | `=IF(F16<=E16,"✅ Better","🔴 Worst site — "&F16&" delays")` | Counts delays at Colorado site (Column C = Site) |
+| **17** | Drakes Delayed | `=COUNTIFS(LW_Data!$C$4:$C$3000,"Drakes",LW_Data!$J$4:$J$3000,"Delay")` | `=COUNTIFS(CW_Data!$C$4:$C$3000,"Drakes",CW_Data!$J$4:$J$3000,"Delay")` | `=IFERROR(F17-E17,"")` | `=IF(F17<=E17,"✅ OK","🟡 "&F17&" delays")` | Counts delays at Drakes site |
+| **18** | Max Days Late | `=MAX(LW_Data!O4:O3000)` | `=MAX(CW_Data!O4:O3000)` | `=IFERROR(F18-E18,"")` | `=IF(F18<=E18,"✅ Improving","🔴 "&F18&"d chronic delay")` | Finds maximum value in Days Late column |
+| **19** | Past Due Lines | `=COUNTIF(LW_Data!K4:K3000,"Past Due")` | `=COUNTIF(CW_Data!K4:K3000,"Past Due")` | `=IFERROR(F19-E19,"")` | `=IF(F19=0,"✅ None","🔴 "&F19&" past due — close urgently")` | Counts items marked "Past Due" in Delay Category |
+| **20** | Net Delay Change | `=COUNTIF(LW_Data!J4:J3000,"Delay")` | `=COUNTIF(CW_Data!J4:J3000,"Delay")` | `=IFERROR(F20-E20,"")` | `=IF(F20<E20,"✅ Net improvement "&(E20-F20)&" resolved","🔴 Net worsening +"&(F20-E20))` | Overall delay count comparison |
+
+---
+
+### **Section 2: Supplier Delay Trend (B25:G32)**
+
+| Supplier | LW Delays Formula | CW Delays Formula | Δ Change | Trend Formula |
+|----------|-------------------|-------------------|----------|---------------|
+| **Indo-MIM** | `=IFERROR(COUNTIFS(LW_Data!$B$4:$B$3000,C26,LW_Data!$J$4:$J$3000,"Delay"),0)` | `=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C26,CW_Data!$J$4:$J$3000,"Delay"),0)` | `=IFERROR(E26-D26,0)` | `=IF(E26<D26,"✅ Improved","🔴 Worsened")` |
+| **JJG Aero** | `=IFERROR(COUNTIFS(LW_Data!$B$4:$B$3000,C27,LW_Data!$J$4:$J$3000,"Delay"),0)` | `=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C27,CW_Data!$J$4:$J$3000,"Delay"),0)` | `=IFERROR(E27-D27,0)` | `=IF(E27<D27,"✅ Improved","🔴 Worsened")` |
+| **Maini** | `=IFERROR(COUNTIFS(LW_Data!$B$4:$B$3000,C28,LW_Data!$J$4:$J$3000,"Delay"),0)` | `=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C28,CW_Data!$J$4:$J$3000,"Delay"),0)` | `=IFERROR(E28-D28,0)` | `=IF(E28<D28,"✅ Improved","🔴 Worsened")` |
+| **PMI** | Same pattern | Same pattern | Same pattern | Same pattern |
+| **Kun Aerospace** | Same pattern | Same pattern | Same pattern | Same pattern |
+| **Rapid** | Same pattern | Same pattern | Same pattern | Same pattern |
+| **SFO** | Same pattern | Same pattern | Same pattern | Same pattern |
+
+---
+
+## 🔧 Key Formula Patterns Explained
+
+Now I have all the formulas. Let me create a comprehensive plain English explanation document:
+
+---
+
+# 📊 WoW Comparison Dashboard - Formula Explanations (Plain English)
+
+## Section 1: Metric-by-Metric Comparison Table (Rows 9-20)
+
+### **Row 9: Total Lines**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D9 (LW Formula)** | `=COUNTA(LW_Data!B4:B3000)` | **"Count how many cells have data"** - Looks at the Supplier column (B) in Last Week's data and counts every cell that isn't empty. This tells us how many PO lines existed last week. |
+| **E9 (LW Value)** | `=COUNTA(LW_Data!B4:B3000)` | Same as above - shows the actual count (1,370 lines) |
+| **F9 (CW Value)** | `=COUNTA(CW_Data!B4:B3000)` | Same logic but for Current Week's data (982 lines) |
+| **G9 (Δ Change)** | `=IFERROR(F9-E9,"")` | **"Subtract last week from current week"** - Calculates the difference. If there's an error, show blank instead of an error message. (-388 means 388 fewer lines this week) |
+| **H9 (Signal)** | `=IF(F9>E9,"▲ More lines","▼ Fewer lines")` | **"If current week is bigger, show up arrow; otherwise show down arrow"** - Simple yes/no check to indicate direction of change |
+
+---
+
+### **Row 10: OTD Rate %**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D10 (LW Formula)** | `=COUNTIFS(LW_Data!I4:I985,"Shipped", LW_Data!J4:J985,"On time") / COUNTIFS(LW_Data!I4:I985,"Shipped")` | **"Count shipped items that were on time, then divide by total shipped items"** - This gives us the On-Time Delivery percentage. It only looks at items with Stage="Shipped" and checks how many of those have "On time" status. |
+| **E10 (LW Value)** | `=COUNTIFS(LW_Data!I4:I1122,"Shipped", LW_Data!J4:J1122,"On time") / COUNTIFS(LW_Data!I4:I1122,"Shipped")` | Same calculation for Last Week = 83.8% |
+| **F10 (CW Value)** | `=COUNTIFS(CW_Data!I4:I985,"Shipped", CW_Data!J4:J985,"On time") / COUNTIFS(CW_Data!I4:I985,"Shipped")` | Same calculation for Current Week = 87.6% |
+| **G10 (Δ Change)** | `=IFERROR(F10-E10,"")` | **"Current week rate minus last week rate"** = +3.9% improvement |
+| **H10 (Signal)** | `=IF(F10>=E10,"✅ Improved","🔴 Declined "&TEXT(ABS(F10-E10),"0.0%"))` | **"If current week is same or better, show green checkmark. If worse, show red circle with the decline percentage"** |
+
+---
+
+### **Row 11: Delayed Lines**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D11 (LW Formula)** | `=COUNTIF(LW_Data!J4:J3000,"Delay")` | **"Count every row where the On-Time/Delay column says 'Delay'"** - Simple count of all delayed items in Last Week data |
+| **E11 (LW Value)** | Same | = 109 delays last week |
+| **F11 (CW Value)** | `=COUNTIF(CW_Data!J4:J3000,"Delay")` | Same for Current Week = 76 delays |
+| **G11 (Δ Change)** | `=IFERROR(F11-E11,"")` | = -33 (33 fewer delays this week) |
+| **H11 (Signal)** | `=IF(F11<=E11,"✅ Improved by "&(E11-F11),"🔴 Worsened +"&(F11-E11))` | **"If delays went down or stayed same, show improvement count. If delays went up, show how many more"** |
+
+---
+
+### **Row 12: Indo-MIM Delayed**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D12 (LW Formula)** | `=COUNTIFS(LW_Data!$B$4:$B$3000,"Indo-Mim",LW_Data!$J$4:$J$3000,"Delay")` | **"Count rows where Supplier is 'Indo-Mim' AND status is 'Delay'"** - This uses two conditions simultaneously to count delays for a specific supplier |
+| **E12 (LW Value)** | Same | = 5 delays last week |
+| **F12 (CW Value)** | `=COUNTIFS(CW_Data!$B$4:$B$3000,"Indo-MIM",CW_Data!$J$4:$J$3000,"Delay")` | Same for Current Week = 6 delays |
+| **G12 (Δ Change)** | `=IFERROR(F12-E12,"")` | = +1 (one more delay this week) |
+| **H12 (Signal)** | `=IF(F12<=E12,"✅ Stable/Better","⚠️ +increase")` | **"If delays are same or fewer, show stable. Otherwise warn about increase"** |
+
+---
+
+### **Rows 13-15: Other Supplier Delays (JJG Aero, Maini, PMI)**
+
+These follow the **exact same pattern** as Indo-MIM:
+- **Logic**: Count where Supplier = "[Name]" AND Status = "Delay"
+- **Change**: Current Week minus Last Week
+- **Signal**: Green if improved/stable, Yellow/Red if worsened
+
+| Supplier | LW | CW | Change | Signal Logic |
+|----------|----|----|--------|--------------|
+| JJG Aero | 38 | 37 | -1 | Shows "✅ Improving" if fewer/same, "🔴 Escalate" if more |
+| Maini | 30 | 33 | +3 | Shows "✅ Stable" if fewer/same, "🟡 Monitor — X delays" if more |
+| PMI | 5 | 0 | -5 | Shows "✅ Stable" if fewer/same, "🟡 Monitor — X delays" if more |
+
+---
+
+### **Rows 16-17: Site Delays (Colorado, Drakes)**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D16 (Colorado)** | `=COUNTIFS(LW_Data!$C$4:$C$3000,"Colorado",LW_Data!$J$4:$J$3000,"Delay")` | **"Count rows where Site (Column C) is 'Colorado' AND status is 'Delay'"** - Same as supplier logic but uses Site column instead |
+| **H16 (Signal)** | `=IF(F16<=E16,"✅ Better","🔴 Worst site — "&F16&" delays")` | **"If improved or same, show Better. Otherwise flag as worst site with count"** |
+| **D17 (Drakes)** | `=COUNTIFS(LW_Data!$C$4:$C$3000,"Drakes",LW_Data!$J$4:$J$3000,"Delay")` | Same pattern for Drakes site |
+| **H17 (Signal)** | `=IF(F17<=E17,"✅ OK","🟡 "&F17&" delays")` | **"If improved or same, show OK. Otherwise show yellow warning with count"** |
+
+---
+
+### **Row 18: Max Days Late**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D18 (LW Formula)** | `=MAX(LW_Data!O4:O3000)` | **"Find the biggest number in the Days Late column"** - This identifies the single worst delay (most days late) in the entire dataset |
+| **E18 (LW Value)** | Same | = 157 days (worst delay last week) |
+| **F18 (CW Value)** | `=MAX(CW_Data!O4:O3000)` | Same for Current Week = 157 days |
+| **G18 (Δ Change)** | `=IFERROR(F18-E18,"")` | = 0 (no change in worst delay) |
+| **H18 (Signal)** | `=IF(F18<=E18,"✅ Improving","🔴 "&F18&"d chronic delay")` | **"If worst delay is same or better, show improving. Otherwise flag as chronic delay"** |
+
+---
+
+### **Row 19: Past Due Lines**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D19 (LW Formula)** | `=COUNTIF(LW_Data!K4:K3000,"Past Due")` | **"Count every row where Delay Category (Column K) says 'Past Due'"** - These are items that have exceeded their due date |
+| **E19 (LW Value)** | Same | = 0 past due last week |
+| **F19 (CW Value)** | `=COUNTIF(CW_Data!K4:K3000,"Past Due")` | Same for Current Week = 46 past due |
+| **G19 (Δ Change)** | `=IFERROR(F19-E19,"")` | = +46 (46 new past due items!) |
+| **H19 (Signal)** | `=IF(F19=0,"✅ None","🔴 "&F19&" past due — close urgently")` | **"If zero past due, all clear. Otherwise show red alert with count and urgency message"** |
+
+---
+
+### **Row 20: Net Delay Change**
+
+| Column | Formula | Plain English Explanation |
+|--------|---------|---------------------------|
+| **D20 & E20** | `=COUNTIF(LW_Data!J4:J3000,"Delay")` | **"Total count of all delays in Last Week"** = 109 |
+| **F20** | `=COUNTIF(CW_Data!J4:J3000,"Delay")` | **"Total count of all delays in Current Week"** = 76 |
+| **G20** | `=IFERROR(F20-E20,"")` | = -33 (33 fewer total delays) |
+| **H20** | `=IF(F20<E20,"✅ Net improvement "&(E20-F20)&" resolved","🔴 Net worsening +"&(F20-E20))` | **"If current week has fewer delays, show how many were resolved. Otherwise show how many new delays"** |
+
+---
+
+## Section 2: Supplier Delay Trend Table (Rows 26-32)
+
+All 7 suppliers use the **same formula pattern**:
+
+| Column | Formula Pattern | Plain English Explanation |
+|--------|-----------------|---------------------------|
+| **D (LW Delays)** | `=IFERROR(COUNTIFS(LW_Data!$B$4:$B$3000,C26,LW_Data!$J$4:$J$3000,"Delay"),0)` | **"Count delays where Supplier matches the name in column C. If error, show 0"** - The C26 reference points to the supplier name (e.g., "Indo-MIM"), making the formula dynamic |
+| **E (CW Delays)** | `=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C26,CW_Data!$J$4:$J$3000,"Delay"),0)` | Same logic for Current Week data |
+| **F (Δ Change)** | `=IFERROR(E26-D26,0)` | **"Current week delays minus last week delays"** - Positive = more delays (bad), Negative = fewer delays (good) |
+| **G (Trend)** | `=IF(E26<D26,"✅ Improved","🔴 Worsened")` | **"If current week has fewer delays than last week, show Improved. Otherwise show Worsened"** |
+
+---
+
+## 🔑 Key Formula Functions Explained
+
+| Function | What It Does | Example |
+|----------|--------------|---------|
+| **COUNTA** | Counts cells that aren't empty | `COUNTA(B4:B100)` = How many suppliers listed |
+| **COUNTIF** | Counts cells matching ONE condition | `COUNTIF(J:J,"Delay")` = How many delays |
+| **COUNTIFS** | Counts cells matching MULTIPLE conditions | `COUNTIFS(B:B,"PMI",J:J,"Delay")` = PMI delays only |
+| **MAX** | Finds the largest number | `MAX(O:O)` = Worst (longest) delay |
+| **IFERROR** | Shows alternative value if formula errors | `IFERROR(A1/B1,0)` = Divide, or show 0 if error |
+| **IF** | Makes a yes/no decision | `IF(A1>B1,"Bigger","Smaller")` |
+| **TEXT** | Formats numbers as text | `TEXT(0.156,"0.0%")` = "15.6%" |
+| **ABS** | Removes negative sign | `ABS(-33)` = 33 |
+| **& (concatenate)** | Joins text together | `"Total: "&A1` = "Total: 157" |
+
+---
+
+## 📋 Web Dashboard Prompt
+
+Here's a prompt you can use to recreate this dashboard in a web application:
+
+```
+Create a Week-on-Week OTD Comparison Dashboard with:
+
+DATA SOURCES:
+- Two datasets: LW_Data (Last Week) and CW_Data (Current Week)
+- Key columns: Supplier (B), Site (C), Stage (I), On-Time/Delay (J), Delay Category (K), Days Late (O)
+
+SECTION 1 - METRIC COMPARISON TABLE:
+Display these metrics with LW Value, CW Value, Δ Change, and Status Signal:
+1. Total Lines (count all rows)
+2. OTD Rate % (shipped on-time / total shipped)
+3. Delayed Lines (count "Delay" status)
+4. Supplier delays for: Indo-MIM, JJG Aero, Maini, PMI
+5. Site delays for: Colorado, Drakes
+6. Max Days Late (worst single delay)
+7. Past Due Lines (count "Past Due" category)
+8. Net Delay Change (overall improvement/decline)
+
+SECTION 2 - SUPPLIER TREND TABLE:
+For each supplier show: LW Delays, CW Delays, Change, Trend indicator
+
+VISUAL INDICATORS:
+- ✅ Green: Improved/On track
+- 🟡 Yellow: Monitor/Caution  
+- 🔴 Red: Worsened/Critical
+- ▲/▼ Arrows for directional changes
+
+COLOR CODING RULES:
+- Green: CW ≤ LW (same or better)
+- Yellow: CW slightly > LW (minor increase)
+- Red: CW significantly > LW OR critical metrics (Past Due)
+```
+
+---
+
+This documentation covers all formulas in the WoW Comparison worksheet with plain English explanations that anyone can understand!
+
+
+
+
+### 1. **COUNTA** - Count All Non-Empty Cells
+```excel
+=COUNTA(LW_Data!B4:B3000)
+```
+**Purpose:** Counts total PO lines by counting non-empty supplier names
+
+### 2. **COUNTIF** - Count with Single Criteria
+```excel
+=COUNTIF(LW_Data!J4:J3000,"Delay")
+```
+**Purpose:** Counts rows where On-Time/Delay column = "Delay"
+
+### 3. **COUNTIFS** - Count with Multiple Criteria
+```excel
+=COUNTIFS(LW_Data!$B$4:$B$3000,"Indo-Mim",LW_Data!$J$4:$J$3000,"Delay")
+```
+**Purpose:** Counts delays for a specific supplier (AND logic: Supplier = "Indo-Mim" AND Status = "Delay")
+
+### 4. **OTD Rate Calculation**
+```excel
+=COUNTIFS(CW_Data!I4:I985,"Shipped",CW_Data!J4:J985,"On time") / COUNTIFS(CW_Data!I4:I985,"Shipped")
+```
+**Purpose:** Divides on-time shipped items by total shipped items to get OTD percentage
+
+### 5. **MAX** - Find Maximum Value
+```excel
+=MAX(CW_Data!O4:O3000)
+```
+**Purpose:** Finds the worst (highest) number of days late
+
+### 6. **IFERROR** - Error Handling
+```excel
+=IFERROR(F9-E9,"")
+```
+**Purpose:** Returns empty string if calculation errors (e.g., divide by zero)
+
+### 7. **Conditional Signal Logic**
+```excel
+=IF(F10>=E10,"✅ Improved","🔴 Declined "&TEXT(ABS(F10-E10),"0.0%"))
+```
+**Purpose:** Shows improvement or decline with dynamic text including the percentage change
+
+---
+
+## 🌐 Web Dashboard Implementation Guide
+
+
+
+### Key Features to Implement:
+1. **KPI Cards** - Large numbers with trend arrows
+2. **Comparison Tables** - Side-by-side LW vs CW
+3. **Bar Charts** - Supplier delay comparison
+4. **Color Coding** - Auto-highlight based on thresholds
+5. **Data Upload** - CSV/Excel import capability
+
+---
+
+This documentation provides everything needed to recreate the WoW Comparison dashboard in a web-based format, with full formula transparency and implementation guidance.
+
+
+For OTD% for last week formula is as below:
+Calulate it as backend service
+Part	Formula Section	Plain English
+Top Part (Numerator)	COUNTIFS(LW_Data!I4:I985,"Shipped", LW_Data!J4:J985,"On time")	"Count how many rows have BOTH conditions true:"
+1. The Stage column (I) says "Shipped" AND
+2. The On-Time/Delay column (J) says "On time"
+
+In other words: "How many items were shipped AND arrived on time?"
+Bottom Part (Denominator)	COUNTIFS(LW_Data!I4:I985,"Shipped")	"Count how many rows have Stage = Shipped"
+
+In other words: "How many items were shipped in total (regardless of whether they were on time or late)?"
+Division ( / )	Top ÷ Bottom	"Divide on-time shipments by total shipments"
+
+This gives you the On-Time Delivery rate as a decimal (e.g., 0.838 = 83.8%)
+Real-World Analogy
+Imagine you're a shipping manager checking your team's performance:
+
+🚚 "Out of all the packages we shipped last week, what percentage arrived on time?"
+
+Step 1: Count packages that were shipped AND on time = 100 packages
+Step 2: Count ALL packages that were shipped = 119 packages
+Step 3: Divide: 100 ÷ 119 = 84% on-time delivery rate
+Why Use COUNTIFS Twice?
+Function	Purpose
+First COUNTIFS	Counts only the "winners" — items that passed BOTH tests (shipped + on time)
+Second COUNTIFS	Counts the total pool — all shipped items (the baseline to compare against)

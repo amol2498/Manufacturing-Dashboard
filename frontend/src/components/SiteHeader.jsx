@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 
 const NAV_ITEMS = [
   { label: 'Week on Week Comparison', path: '/wow-dashboard' },
+  { label: 'WoW Comparison', path: '/wow-comparison' },
   { label: 'OTD Risk Intelligence Dashboard', path: '/otd-risk-dashboard' },
   { label: 'Details', path: '/details' },
 ]

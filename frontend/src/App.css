@@ -1369,3 +1369,59 @@ body {
 .details-td:last-child { border-right: none; }
 .details-td-bold { font-weight: 600; color: #1e3a5f; }
 .details-td-center { text-align: center; }
+
+/* ── WoW Comparison: Metric by Metric ───────────────────────────────────────── */
+.mbm-banner {
+  background: #f3f0ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 5px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b21b6;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mbm-banner-icon { font-size: 14px; }
+.mbm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mbm-th {
+  background: #6d28d9;
+  color: #fff;
+  padding: 9px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-right: 1px solid #7c3aed;
+  white-space: nowrap;
+}
+.mbm-th:last-child { border-right: none; }
+.mbm-th-metric { min-width: 200px; }
+.mbm-row:nth-child(even) { background: #f9f7ff; }
+.mbm-row:nth-child(odd)  { background: #fff; }
+.mbm-row:hover { background: #ede9fe; }
+.mbm-td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f0f0f0;
+  color: #333;
+}
+.mbm-td:last-child { border-right: none; }
+.mbm-metric { font-weight: 700; color: #1e1b4b; }
+.mbm-highlight { background: #fef08a !important; color: #1e1b4b; }
+.mbm-formula-val { font-style: italic; color: #6d28d9; font-size: 12px; }
+.mbm-lw { color: #555; }
+.mbm-cw { font-weight: 700; color: #1e1b4b; }
+.mbm-delta { font-weight: 700; text-align: center; }
+.mbm-delta-good    { color: #166534; font-weight: 700; }
+.mbm-delta-bad     { color: #991b1b; font-weight: 700; }
+.mbm-delta-neutral { color: #1e3a5f; font-weight: 700; }
+.mbm-signal-cell { font-weight: 500; white-space: nowrap; }
+.mbm-good    { color: #166534; }
+.mbm-warn    { color: #92400e; }
+.mbm-bad     { color: #991b1b; }
+.mbm-neutral { color: #1e3a5f; }
