@@ -933,16 +933,12 @@ def compute_wow_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
             return int(n.max()) if n.notna().any() else 0
         return 0
 
-    # Past due: Stage != "Shipped" AND Due Date < TODAY()
-    today = pd.Timestamp.now().normalize()
-
-    def _past_due(raw):
-        stage_s = _otdr_col(raw, ['stage', 'stages'], 8)
-        not_shipped = stage_s != 'shipped'
-        dc = {str(c).replace('\xa0', ' ').strip().lower(): c for c in raw.columns}
-        due_name = next((dc[k] for k in ['due date', 'due_date', 'duedate', 'delivery date', 'planned delivery date'] if k in dc), None)
-        due_s = raw[due_name] if due_name else raw.iloc[:, 6]
-        return int((not_shipped & (_parse_date_column(due_s) < today)).sum())
+    # Past due: COUNTIF(Delay Category = "Past Due")  — mirrors Excel formula =COUNTIF(K4:K3000,"Past Due")
+    def _past_due(df):
+        dc = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+        col = next((dc[k] for k in ['delay category', 'delay_category', 'delaycategory', 'category'] if k in dc), None)
+        s = df[col].astype(str).str.replace('\xa0', ' ').str.strip().str.lower() if col else df.iloc[:, 10].astype(str).str.replace('\xa0', ' ').str.strip().str.lower()
+        return int((s == 'past due').sum())
 
     # Supplier column
     def _sup_series(df):
@@ -983,7 +979,7 @@ def compute_wow_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
         'otd_rate':      {'lw': lw_otd,              'cw': cw_otd},
         'delayed_lines': {'lw': lw_delayed_count,    'cw': cw_delayed_count},
         'max_days_late': {'lw': _max_days(lw_df),    'cw': _max_days(cw_df)},
-        'past_due':      {'lw': _past_due(lw_raw),   'cw': _past_due(cw_raw)},
+        'past_due':      {'lw': _past_due(lw_raw), 'cw': _past_due(cw_raw)},
         'supplier_rows': supplier_rows,
         'site_rows':     site_rows,
     }

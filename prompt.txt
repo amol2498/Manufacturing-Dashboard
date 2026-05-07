@@ -648,3 +648,5 @@ Why Use COUNTIFS Twice?
 Function	Purpose
 First COUNTIFS	Counts only the "winners" — items that passed BOTH tests (shipped + on time)
 Second COUNTIFS	Counts the total pool — all shipped items (the baseline to compare against)
+
+the Last Week Formula column for past due should calculation use the column Delay Category = 'Past Due'
