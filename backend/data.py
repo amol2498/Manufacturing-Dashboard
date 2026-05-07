@@ -513,6 +513,84 @@ def get_pivot5_data(session_id, stages, ontime_delay, delay_category, months, su
     return {"rows": rows, "columns": ["Metric"] + month_order + ["Total"]}
 
 
+def parse_otd_risk_sheets(file_bytes: bytes):
+    """Parse LW_Data and CW_Data sheets from the OTD Risk Excel file.
+    Data is expected from Excel row 4 onwards (rows 1-3 are skipped).
+    Returns (cw_df, lw_df) as raw DataFrames with positional column indices.
+    """
+    source = io.BytesIO(file_bytes)
+    cw_df = pd.read_excel(
+        source, sheet_name='CW_Data', header=None, skiprows=3,
+        engine='openpyxl', engine_kwargs={'data_only': True},
+    )
+    source.seek(0)
+    lw_df = pd.read_excel(
+        source, sheet_name='LW_Data', header=None, skiprows=3,
+        engine='openpyxl', engine_kwargs={'data_only': True},
+    )
+    return cw_df, lw_df
+
+
+def compute_supplier_otd_report(cw_df: pd.DataFrame) -> list:
+    """Compute SUPPLIER OTD report from CW_Data sheet.
+
+    Column mapping mirrors the Excel formula positions (0-indexed):
+      B = 1  → Supplier
+      J = 9  → On Time / Delay status  (CW Lines and On Time count)
+      N = 13 → Delay indicator column  (Delayed count)
+
+    Excel formula equivalents:
+      CW Lines   = COUNTIFS(B, supplier, J, "On time") + COUNTIFS(B, supplier, J, "Delay")
+      On Time    = COUNTIFS(B, supplier, J, "On time")
+      Delayed    = COUNTIFS(B, supplier, N, "Delay")
+      OTD %      = On Time / CW Lines   (as percentage, 0-100 scale)
+      Gap to 95% = OTD % - 95
+    """
+    COL_SUPPLIER = 1
+    COL_J = 9
+    COL_N = 13
+
+    if cw_df.shape[1] <= COL_SUPPLIER:
+        return []
+
+    sup_series = cw_df.iloc[:, COL_SUPPLIER].astype(str).str.strip()
+    suppliers = sorted(
+        s for s in sup_series.unique()
+        if s and s.lower() not in ('nan', 'none', '')
+    )
+
+    j_series = (
+        cw_df.iloc[:, COL_J].astype(str).str.strip().str.lower()
+        if cw_df.shape[1] > COL_J else pd.Series(dtype=str)
+    )
+    n_series = (
+        cw_df.iloc[:, COL_N].astype(str).str.strip().str.lower()
+        if cw_df.shape[1] > COL_N else pd.Series(dtype=str)
+    )
+
+    rows = []
+    for supplier in suppliers:
+        mask = sup_series == supplier
+
+        cw_lines = int((mask & j_series.isin(['on time', 'delay'])).sum()) if len(j_series) else 0
+        on_time  = int((mask & (j_series == 'on time')).sum())             if len(j_series) else 0
+        delayed  = int((mask & (n_series == 'delay')).sum())               if len(n_series) else 0
+
+        otd_pct    = round(on_time / cw_lines * 100, 1) if cw_lines > 0 else 0.0
+        gap_to_95  = round(otd_pct - 95.0, 1)
+
+        rows.append({
+            'supplier':   supplier,
+            'cw_lines':   cw_lines,
+            'on_time':    on_time,
+            'delayed':    delayed,
+            'otd_pct':    otd_pct,
+            'gap_to_95':  gap_to_95,
+        })
+
+    return rows
+
+
 def get_records_data(session_id, month, stage, item_number=None, po_number=None):
     df = get_df(session_id)
     if df.empty or "Month" not in df.columns or "Stages" not in df.columns:

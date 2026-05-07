@@ -171,6 +171,25 @@ def get_chart2(
     return data.get_chart2_data(session_id, stages, ontime_delay, delay_category, months, supplier_names, item_number, po_number)
 
 
+@app.post("/api/upload-otd-risk")
+async def upload_otd_risk(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        cw_df, lw_df = data.parse_otd_risk_sheets(contents)
+        supplier_otd = data.compute_supplier_otd_report(cw_df)
+        return {
+            "supplier_otd": supplier_otd,
+            "cw_rows": len(cw_df),
+            "lw_rows": len(lw_df),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
 @app.get("/api/records")
 def get_records(
     session_id: str = Query(...),

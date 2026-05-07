@@ -32,7 +32,7 @@ The excel file has raw data in 2 wroksheets named:
 LW_Data which contains Last Week Data 
 CW_Data which contains Current Week Data
 
-Create a report as per attached image.
+Create a report with Title as "SUPPLIER OTD" as per attached image.
 Report should have columns - "Supplier", "CW Lines", "On Time", "Delayed",	"OTD %" & "Gap to 95%"
 Supplier column should have distince value for Supplier in the Current Week.
 CW Lines column should be calculates as per execel formula: "=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$J$4:$J$3000,"On time")+COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$J$4:$J$3000,"Delay"),0)"
@@ -40,6 +40,17 @@ On Time column should be calculates as per execel formula:  "=IFERROR(COUNTIFS(C
 Delayed column should be calculates as per execel formula:  "=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$N$4:$N$3000,"Delay"),0)"
 OTD % column should be calculates as per execel formula:   "=IFERROR(E13/D13,0)"
 "Gap to 95%" column should be calculates as per execel formula: "=IFERROR(G13-0.95,0)" 
+
+The calculations should be done in backend service.
+
+#####################
+On the  OTD Risk Intelligence Dashboard, Creare a dashbord above the SUPPLIER OTD dasboard section as per attached image.
+The dashboard should have 6 sections in a row as per image:
+Section 1 : 
+should have 3 rows:
+
+
+
 
 
 

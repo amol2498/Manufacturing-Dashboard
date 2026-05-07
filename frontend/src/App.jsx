@@ -9,6 +9,7 @@ import Tab4 from './components/Tab4'
 import Tab5 from './components/Tab5'
 import RecordsPage from './components/RecordsPage'
 import WowDashboard from './components/WowDashboard'
+import OTDRiskDashboard from './components/OTDRiskDashboard'
 import UploadWidget from './components/UploadWidget'
 import { fetchDataVersion } from './api/client'
 import './App.css'
@@ -87,6 +88,7 @@ export default function App() {
     <Routes>
       <Route path="/records" element={<RecordsPage />} />
       <Route path="/wow-dashboard" element={<WowDashboard />} />
+      <Route path="/otd-risk-dashboard" element={<OTDRiskDashboard />} />
       <Route path="/" element={
         <div className="app">
           {/* ── Header ── */}

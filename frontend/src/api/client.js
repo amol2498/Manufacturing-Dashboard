@@ -114,3 +114,9 @@ export async function uploadTab3Previous(file) {
   formData.append('file', file)
   return apiFetch(`${BASE_URL}/upload-tab3-previous?session_id=${SESSION_ID}`, { method: 'POST', body: formData })
 }
+
+export async function uploadOtdRisk(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-otd-risk`, { method: 'POST', body: formData })
+}
