@@ -1277,3 +1277,95 @@ body {
   text-transform: none !important;
   letter-spacing: 0;
 }
+
+/* ── Details Dashboard ─────────────────────────────────────────────────────── */
+.details-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.details-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.details-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e3a5f;
+}
+.details-filter-select {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid #c8d4e3;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+}
+.details-filter-select:focus {
+  border-color: #1e3a5f;
+}
+.details-filter-clear {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid #c8d4e3;
+  border-radius: 4px;
+  background: #f7f9fc;
+  color: #666;
+  cursor: pointer;
+}
+.details-filter-clear:hover {
+  background: #fee2e2;
+  color: #c0392b;
+  border-color: #c0392b;
+}
+.details-count {
+  font-size: 13px;
+  color: #555;
+}
+.details-count-num {
+  font-weight: 700;
+  color: #1e3a5f;
+  font-size: 15px;
+}
+.details-table-wrap {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.details-th {
+  background: #1e3a5f;
+  color: #fff;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  border-right: 1px solid #2d5080;
+}
+.details-th:last-child { border-right: none; }
+.details-sort-icon { font-size: 10px; margin-left: 2px; opacity: 0.8; }
+.details-row { background: #fff; }
+.details-row-alt { background: #f7f9fc; }
+.details-row:hover, .details-row-alt:hover { background: #eef3fa; }
+.details-td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f0f0f0;
+  color: #333;
+}
+.details-td:last-child { border-right: none; }
+.details-td-bold { font-weight: 600; color: #1e3a5f; }
+.details-td-center { text-align: center; }

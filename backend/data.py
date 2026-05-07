@@ -809,6 +809,83 @@ def compute_site_otd_report(cw_df: pd.DataFrame) -> list:
     return rows
 
 
+def compute_details_report(cw_df: pd.DataFrame) -> list:
+    """Return all CW_Data rows where Status='Delay', with Aging Bucket calculated.
+    Sorted by Days Late descending.
+    """
+    def _raw(df, names, idx):
+        col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+        for name in (names if isinstance(names, list) else [names]):
+            if name.strip().lower() in col_lower:
+                return df[col_lower[name.strip().lower()]]
+        return df.iloc[:, idx] if idx is not None and df.shape[1] > idx else pd.Series([''] * len(df), index=df.index)
+
+    def _clean(val):
+        s = str(val).replace('\xa0', ' ').strip()
+        return '' if s.lower() in ('nan', 'none', 'nat') else s
+
+    def _fmt_date(val):
+        if pd.isna(val) if hasattr(val, '__class__') and val.__class__.__name__ in ('float', 'NaTType') else False:
+            return ''
+        s = _clean(val)
+        if not s:
+            return ''
+        try:
+            return pd.Timestamp(val).strftime('%d-%b-%y')
+        except Exception:
+            return s
+
+    status_col = _raw(cw_df, ['status'], 13).astype(str).str.replace('\xa0', ' ').str.strip().str.lower()
+    delayed_df = cw_df[status_col == 'delay'].copy()
+    if delayed_df.empty:
+        return []
+
+    item_col     = _raw(delayed_df, ['item #', 'item#', 'item number'], 3)
+    po_col       = _raw(delayed_df, ['po #', 'po#', 'po number'], 4)
+    supplier_col = _raw(delayed_df, ['supplier', 'supplier name'], 1)
+    site_col     = _raw(delayed_df, ['site', 'location', 'plant'], 2)
+    due_date_col = _raw(delayed_df, ['due date', 'due_date'], 6)
+    days_late_col = _raw(delayed_df, ['days late', 'days_late'], 14)
+    stage_col    = _raw(delayed_df, ['stage', 'stages'], 8)
+    qty_col      = _raw(delayed_df, ['qty', 'quantity'], 5)
+    category_col = _raw(delayed_df, ['delay category', 'delaycategory', 'delay_category'], 10)
+    reason_col   = _raw(delayed_df, ['reason', 'delay reason'], 12)
+    commit_col   = _raw(delayed_df, ['commit date', 'commitdate', 'commit_date'], 11)
+
+    rows = []
+    for i in range(len(delayed_df)):
+        raw_dl = _clean(days_late_col.iloc[i])
+        try:
+            days_late = int(round(float(raw_dl))) if raw_dl else None
+        except Exception:
+            days_late = None
+
+        if days_late is None:     aging = ''
+        elif days_late > 60:      aging = '60+ Days'
+        elif days_late > 30:      aging = '31-60 Days'
+        elif days_late > 14:      aging = '15-30 Days'
+        elif days_late > 7:       aging = '8-14 Days'
+        else:                     aging = '1-7 Days'
+
+        rows.append({
+            'item_number':  _clean(item_col.iloc[i]),
+            'po_number':    _clean(po_col.iloc[i]),
+            'supplier':     _clean(supplier_col.iloc[i]),
+            'site':         _clean(site_col.iloc[i]),
+            'due_date':     _fmt_date(due_date_col.iloc[i]),
+            'days_late':    days_late,
+            'stage':        _clean(stage_col.iloc[i]),
+            'qty_due':      _clean(qty_col.iloc[i]),
+            'aging_bucket': aging,
+            'category':     _clean(category_col.iloc[i]),
+            'delay_reason': _clean(reason_col.iloc[i]),
+            'commit_date':  _fmt_date(commit_col.iloc[i]),
+        })
+
+    rows.sort(key=lambda r: (r['days_late'] is None, -(r['days_late'] or 0)))
+    return rows
+
+
 def get_records_data(session_id, month, stage, item_number=None, po_number=None):
     df = get_df(session_id)
     if df.empty or "Month" not in df.columns or "Stages" not in df.columns:

@@ -196,6 +196,21 @@ async def upload_otd_risk(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
 
 
+@app.post("/api/upload-details")
+async def upload_details(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        cw_df, _ = data.parse_otd_risk_sheets(contents)
+        rows = data.compute_details_report(cw_df)
+        return {"delay_details": rows, "total": len(rows)}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
 @app.get("/api/records")
 def get_records(
     session_id: str = Query(...),

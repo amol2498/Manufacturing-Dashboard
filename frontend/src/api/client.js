@@ -120,3 +120,9 @@ export async function uploadOtdRisk(file) {
   formData.append('file', file)
   return apiFetch(`${BASE_URL}/upload-otd-risk`, { method: 'POST', body: formData })
 }
+
+export async function uploadDetails(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-details`, { method: 'POST', body: formData })
+}
