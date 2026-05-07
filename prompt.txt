@@ -24,3 +24,23 @@ create a new secton in the WoW dashboard page as " Monthly OTD Breakdown". This 
 " section. Do not hide any dashboard
 
 Create a new dashboard in that section as per attached image. Use the same data - last week and current week.
+
+#####################
+Create a new navigation menu " OTD Risk Intelligence Dashboard" which will take user to new page called  OTD Risk Intelligence Dashboard.
+The page should contain a upload file button to upload an xcel file. 
+The excel file has raw data in 2 wroksheets named:
+LW_Data which contains Last Week Data 
+CW_Data which contains Current Week Data
+
+Create a report as per attached image.
+Report should have columns - "Supplier", "CW Lines", "On Time", "Delayed",	"OTD %" & "Gap to 95%"
+Supplier column should have distince value for Supplier in the Current Week.
+CW Lines column should be calculates as per execel formula: "=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$J$4:$J$3000,"On time")+COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$J$4:$J$3000,"Delay"),0)"
+On Time column should be calculates as per execel formula:  "=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$J$4:$J$3000,"On time"),0)"
+Delayed column should be calculates as per execel formula:  "=IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000,C13,CW_Data!$N$4:$N$3000,"Delay"),0)"
+OTD % column should be calculates as per execel formula:   "=IFERROR(E13/D13,0)"
+"Gap to 95%" column should be calculates as per execel formula: "=IFERROR(G13-0.95,0)" 
+
+
+
+
