@@ -55,7 +55,7 @@ export default function DetailsDashboard() {
   const [sortCol, setSortCol]     = useState('days_late')
   const [sortDir, setSortDir]     = useState('desc')
   const [filterAging, setFilterAging]       = useState('')
-  const [filterDaysLate, setFilterDaysLate] = useState('')
+  const [filterDaysLate, setFilterDaysLate] = useState('≥ 61 days')
   const fileRef = useRef(null)
 
   const handleFileChange = async (e) => {
@@ -110,9 +110,6 @@ export default function DetailsDashboard() {
           {/* Upload */}
           <div className="section">
             <h2 className="section-title">Upload OTD Risk File</h2>
-            <p className="otdr-upload-hint">
-              <strong><em>Upload the Excel file containing CW_Data sheet — only rows where Status = "Delay" are shown</em></strong>
-            </p>
             <div className="tab3-upload-row" style={{ marginTop: 12 }}>
               <input ref={fileRef} type="file" accept=".xlsx,.xls"
                 style={{ display: 'none' }} onChange={handleFileChange} />
