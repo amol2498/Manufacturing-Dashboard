@@ -48,10 +48,88 @@ On the  OTD Risk Intelligence Dashboard, Creare a dashbord above the SUPPLIER OT
 The dashboard should have 6 sections in a row as per image:
 Section 1 : 
 should have 3 rows:
+row 1 should have be as per excel formula: "=COUNTA(CW_Data!B4:B3000)"
+row 2 should have static text: "TOTAL CW LINES"
+row 3 should have be as per excel formula: "=("LW: "&COUNTA(LW_Data!B4:B3000))"
+calculations should be done in backend service
+
+Section 2 : 
+should have 3 rows:
+row 1 should have be as per excel formula: "=COUNTIFS(CW_Data!I4:I985,"Shipped", CW_Data!J4:J985,"On time") / COUNTIFS(CW_Data!I4:I985,"Shipped")"
+row 2 should have static text: "OTD RATE (CW)"
+row 3 should have be as per excel formula: "="LW: " & COUNTIFS(LW_Data!I4:I985,"Shipped", LW_Data!J4:J985,"On time") / COUNTIFS(LW_Data!I4:I985,"Shipped")*100"
+calculations should be done in backend service
+
+in section 2 
+formula for OTD RATE (CW) is :
+D = count of all Current week data records where Stage = "Shipped" and On-Time/Delay = "On time". 
+N = Current week data records where Stage = "Shipped"
+row 1 data = D/N
+
+in section 2 
+formula for LW on row 3 is :
+D = count of all Last week data records where Stage = "Shipped" and On-Time/Delay = "On time". 
+N = count of all Last week data records where Stage = "Shipped"
+row 1 data = (D/N) * 100
+It should be case insensitve
+
+Recreate Section 3 as per below : 
+should have 3 rows:
+row 1 should have be as per excel formula: "=COUNTIF(CW_Data!J4:J3000,"Delay")"
+row 2 should have static text: "DELAYED LINES (CW)"
+row 3 should have be as per excel formula: "=("LW: "&COUNTIF(LW_Data!N4:N3000,"Delay"))"
+calculations should be done in backend service
+
+
+in section 3 
+formulas for on row 3 is :
+row 1 data  = count of all current week data records where On-Time/Delay = "Delay". 
+row 2 should have static text: "DELAYED LINES (CW)"
+row 3 data  = count of all last week data records where column Status = "Delay". 
+calculations should be done in backend service
+all text Comparisons should be  case insensitve
+
+Recreate section 4 as below:
+formulas for on row 3 is :
+row 1 data  = from current week data get the maximum value from column "Days Late"
+row 2 should have static text: "MAX DAYS LATE"
+row 3 data  = text "Most aged delay: " append value "from current week data get the maximum value from column "Days Late""
+calculations should be done in backend service
+all text Comparisons should be  case insensitve
+
+
+Recreate section 5 as below:
+row 1 data:  sum of all records from current week where column 'On-Time/Delay' = "Delay" minus sum of all records from last week where column 'On-Time/Delay' = "Delay" 
+row 2 should have static text: "NEW DELAYS THIS WK"
+row 3 data  = text "Resolved " append value "sum of all records from last week column 'Status' = "Delay" minus sum of all records from current week column 'Status' = "Delay" "
+calculations should be done in backend service
+all text Comparisons should be  case insensitve
 
 
 
+Recreate section 6 as below:
+row 1 data:  sum of all records from current week where column 'Delay Category' = "Past Due" 
+row 2 should have static text: "PAST DUE"
+row 3 data  = "Col K = Delay Category"
 
+
+generate a report named "Montly OTD" like attached image beside "SUPPLIER OTD" in the same row
+report has below columns:
+Month,	OTD %,	Delayed,	On Time,	Total
+
+Month column has distinct values from the current year match the current week data in month column - 
+e.g.
+Apr 2026
+May 2026
+Jun 2026
+Jul 2026
+Aug 2026
+Sep 2026
+Oct 2026
+
+"On Time" is calculated as follows:
+sum of all records in current data where report month month is matching Current Week data "Month" and Current week data "On-Time/Delay" = "On Time"
+i.e. SUM(Current Week data) where Current Week data('month') =" report month"  and Current Week data('On-Time/Delay') =  "On Time"
 
 
 

@@ -513,21 +513,140 @@ def get_pivot5_data(session_id, stages, ontime_delay, delay_category, months, su
     return {"rows": rows, "columns": ["Metric"] + month_order + ["Total"]}
 
 
+def _otdr_col(df, names, fallback_idx):
+    """Flexible column accessor: tries each name (case-insensitive) then falls back to positional index.
+    Always returns a lowercased, stripped Series ready for comparison.
+    """
+    col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+    for name in (names if isinstance(names, list) else [names]):
+        key = name.replace('\xa0', ' ').strip().lower()
+        if key in col_lower:
+            return df[col_lower[key]].astype(str).str.replace('\xa0', ' ', regex=False).str.strip().str.lower()
+    if fallback_idx is not None and df.shape[1] > fallback_idx:
+        return df.iloc[:, fallback_idx].astype(str).str.replace('\xa0', ' ', regex=False).str.strip().str.lower()
+    return pd.Series(dtype=str)
+
+
+def _valid_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep only rows where the Supplier column (B, index 1) has a real value."""
+    col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+    col = next((col_lower[k] for k in ['supplier', 'supplier name'] if k in col_lower), None)
+    sup = df[col] if col else df.iloc[:, 1]
+    mask = sup.notna() & (sup.astype(str).str.replace('\xa0', ' ').str.strip().str.lower().ne('nan')) & (sup.astype(str).str.replace('\xa0', ' ').str.strip().ne(''))
+    return df[mask]
+
+
+def compute_summary_stats(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
+    """Compute 6-card summary banner statistics from CW_Data and LW_Data sheets."""
+    # Keep raw DataFrames for counts that don't require a supplier (e.g. Past Due)
+    cw_raw = cw_df
+    lw_raw = lw_df
+
+    # Apply supplier-row filter so all supplier-scoped counts match Excel's implicit row scope
+    cw_df = _valid_rows(cw_df)
+    lw_df = _valid_rows(lw_df)
+
+    cw_total = len(cw_df)
+    lw_total = len(lw_df)
+
+    # Stage column (col I, index 8) and On-Time/Delay column (col J, index 9)
+    cw_i = _otdr_col(cw_df, ['stage', 'stages'], 8)
+    cw_j = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+    lw_i = _otdr_col(lw_df, ['stage', 'stages'], 8)
+    lw_j = _otdr_col(lw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+
+    # Section 2 – OTD RATE
+    # Row 1 (CW): COUNTIFS(Stage="Shipped", On-Time/Delay="On time") / COUNTIFS(Stage="Shipped")
+    cw_shipped        = int((cw_i == 'shipped').sum())
+    cw_shipped_ontime = int(((cw_i == 'shipped') & (cw_j == 'on time')).sum())
+    cw_otd_rate = round(cw_shipped_ontime / cw_shipped * 100, 1) if cw_shipped > 0 else 0.0
+
+    # Row 3 (LW): same formula × 100 (raw, unrounded like Excel text concat)
+    lw_shipped        = int((lw_i == 'shipped').sum())
+    lw_shipped_ontime = int(((lw_i == 'shipped') & (lw_j == 'on time')).sum())
+    lw_otd_rate = lw_shipped_ontime / lw_shipped * 100 if lw_shipped > 0 else 0.0
+
+    # Section 3 – DELAYED LINES
+    # Row 1 (CW): count where On-Time/Delay = "Delay"
+    cw_delayed = int((cw_j == 'delay').sum())
+    # Row 3 (LW): count where Status = "Delay"
+    lw_status  = _otdr_col(lw_df, 'status', 13)
+    lw_delayed = int((lw_status == 'delay').sum())
+
+    # Section 5 – NEW DELAYS THIS WK
+    # Row 1: CW On-Time/Delay="Delay" − LW On-Time/Delay="Delay"  (both use On-Time/Delay column)
+    lw_j_delayed   = int((lw_j == 'delay').sum())
+    net_new_delays = cw_delayed - lw_j_delayed
+
+    # Row 3: "Resolved " + (LW Status="Delay" count − CW Status="Delay" count)
+    cw_status = _otdr_col(cw_df, 'status', 13)
+    resolved  = lw_delayed - int((cw_status == 'delay').sum())
+
+    # Section 6 – PAST DUE
+    # Dynamic formula (mirrors Excel): Stage != "Shipped" AND Due Date (col G) < TODAY()
+    today = pd.Timestamp.now().normalize()
+    cw_i_raw = _otdr_col(cw_raw, ['stage', 'stages'], 8)
+    not_shipped_raw = cw_i_raw != 'shipped'
+    due_col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in cw_raw.columns}
+    due_col_name = next(
+        (due_col_lower[k] for k in ['due date', 'due_date', 'duedate', 'delivery date', 'planned delivery date'] if k in due_col_lower),
+        None
+    )
+    due_series = cw_raw[due_col_name] if due_col_name else cw_raw.iloc[:, 6]
+    due_parsed = _parse_date_column(due_series)
+    past_due = int((not_shipped_raw & (due_parsed < today)).sum())
+
+    # Section 4 – MAX DAYS LATE
+    # Row 1 & Row 3: max numeric value from "Days Late" column in CW_Data
+    def _max_days_late(df):
+        col_lower = {str(c).strip().lower(): c for c in df.columns}
+        col_name  = next((col_lower[k] for k in ['days late', 'days_late', 'dayslate'] if k in col_lower), None)
+        if col_name:
+            numeric = pd.to_numeric(df[col_name], errors='coerce')
+            if numeric.notna().any():
+                return int(numeric.max())
+        return None
+
+    max_days_late = _max_days_late(cw_df)
+
+    return {
+        # Section 1 – TOTAL CW LINES
+        'cw_total':       cw_total,
+        'lw_total':       lw_total,
+        # Section 2 – OTD RATE (CW)
+        'cw_otd_rate':    round(cw_otd_rate, 1),
+        'lw_otd_rate':    lw_otd_rate,
+        # Section 3 – DELAYED LINES (CW)
+        'cw_delayed':     cw_delayed,
+        'lw_delayed':     lw_delayed,
+        # Section 4 – MAX DAYS LATE
+        'max_days_late':  max_days_late,
+        # Section 5 – NEW DELAYS THIS WK
+        'net_new_delays': net_new_delays,
+        'resolved':       resolved,
+        # Section 6 – PAST DUE
+        'past_due':       past_due,
+
+    }
+
+
 def parse_otd_risk_sheets(file_bytes: bytes):
     """Parse LW_Data and CW_Data sheets from the OTD Risk Excel file.
-    Data is expected from Excel row 4 onwards (rows 1-3 are skipped).
-    Returns (cw_df, lw_df) as raw DataFrames with positional column indices.
+    Excel row 3 is used as the column header row; data begins at Excel row 4.
+    Returns (cw_df, lw_df) with named columns for reliable lookups.
     """
     source = io.BytesIO(file_bytes)
     cw_df = pd.read_excel(
-        source, sheet_name='CW_Data', header=None, skiprows=3,
+        source, sheet_name='CW_Data', header=2,
         engine='openpyxl', engine_kwargs={'data_only': True},
     )
     source.seek(0)
     lw_df = pd.read_excel(
-        source, sheet_name='LW_Data', header=None, skiprows=3,
+        source, sheet_name='LW_Data', header=2,
         engine='openpyxl', engine_kwargs={'data_only': True},
     )
+    cw_df.columns = cw_df.columns.astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+    lw_df.columns = lw_df.columns.astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
     return cw_df, lw_df
 
 
@@ -553,20 +672,20 @@ def compute_supplier_otd_report(cw_df: pd.DataFrame) -> list:
     if cw_df.shape[1] <= COL_SUPPLIER:
         return []
 
-    sup_series = cw_df.iloc[:, COL_SUPPLIER].astype(str).str.strip()
+    # Supplier: keep original case for display, only strip whitespace
+    sup_col_lower = {str(c).strip().lower(): c for c in cw_df.columns}
+    sup_col_name  = next((sup_col_lower[k] for k in ['supplier', 'supplier name'] if k in sup_col_lower), None)
+    sup_series = (
+        cw_df[sup_col_name].astype(str).str.strip()
+        if sup_col_name else cw_df.iloc[:, COL_SUPPLIER].astype(str).str.strip()
+    )
     suppliers = sorted(
         s for s in sup_series.unique()
         if s and s.lower() not in ('nan', 'none', '')
     )
 
-    j_series = (
-        cw_df.iloc[:, COL_J].astype(str).str.strip().str.lower()
-        if cw_df.shape[1] > COL_J else pd.Series(dtype=str)
-    )
-    n_series = (
-        cw_df.iloc[:, COL_N].astype(str).str.strip().str.lower()
-        if cw_df.shape[1] > COL_N else pd.Series(dtype=str)
-    )
+    j_series = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], COL_J)
+    n_series = _otdr_col(cw_df, ['status'], COL_N)
 
     rows = []
     for supplier in suppliers:
@@ -586,6 +705,53 @@ def compute_supplier_otd_report(cw_df: pd.DataFrame) -> list:
             'delayed':    delayed,
             'otd_pct':    otd_pct,
             'gap_to_95':  gap_to_95,
+        })
+
+    return rows
+
+
+def compute_monthly_otd_report(cw_df: pd.DataFrame) -> list:
+    """Compute Monthly OTD report from CW_Data.
+
+    For each distinct month (current year) in the Month column:
+      On Time = count(Month=m AND On-Time/Delay="On Time")
+      Delayed  = count(Month=m AND On-Time/Delay="Delay")
+      Total    = On Time + Delayed
+      OTD %    = On Time / Total * 100
+    """
+    cw_df = _valid_rows(cw_df)
+
+    col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in cw_df.columns}
+    month_col_name = col_lower.get('month', None)
+    if month_col_name is None:
+        return []
+
+    current_year = str(pd.Timestamp.now().year)
+    month_raw    = cw_df[month_col_name].astype(str).str.replace('\xa0', ' ').str.strip()
+    month_lower  = month_raw.str.lower()
+    j_series     = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+
+    months_unique = month_raw[month_raw.str.contains(current_year, na=False)].unique()
+
+    _abbr = {'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,
+             'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12}
+
+    def _sort_key(m):
+        parts = str(m).strip().split()
+        return (parts[1] if len(parts) > 1 else '', _abbr.get(parts[0].lower()[:3], 0) if parts else 0)
+
+    rows = []
+    for month_display in sorted(months_unique, key=_sort_key):
+        mask    = month_lower == month_display.lower()
+        on_time = int((mask & (j_series == 'on time')).sum())
+        delayed = int((mask & (j_series == 'delay')).sum())
+        total   = on_time + delayed
+        rows.append({
+            'month':   month_display,
+            'on_time': on_time  if total > 0 else None,
+            'delayed': delayed  if total > 0 else None,
+            'total':   total    if total > 0 else None,
+            'otd_pct': round(on_time / total * 100, 1) if total > 0 else None,
         })
 
     return rows

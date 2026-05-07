@@ -1178,3 +1178,77 @@ body {
 .otdr-gap     { font-weight: 700; }
 .otdr-gap-pos { color: #16a34a; }
 .otdr-gap-neg { color: #dc2626; }
+
+/* ── OTD Risk – 6-card summary banner ── */
+.otdr-summary-bar {
+  display: flex;
+  border: 1px solid #d0d5dd;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.otdr-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #d0d5dd;
+}
+
+.otdr-card:last-child {
+  border-right: none;
+}
+
+.otdr-card-top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px 6px;
+  gap: 4px;
+}
+
+.otdr-card-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.otdr-card-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #333;
+  text-align: center;
+}
+
+.otdr-card-sub {
+  border-top: 1px solid #e5e7eb;
+  padding: 4px 12px;
+  font-size: 10px;
+  color: #777;
+  font-style: italic;
+  text-align: center;
+  background: #fafafa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.otdr-val-blue   { color: #2a6496; }
+.otdr-val-green  { color: #16a34a; }
+.otdr-val-red    { color: #dc2626; }
+.otdr-val-orange { color: #d97706; }
+
+/* ── OTD Risk – side-by-side table layout ── */
+.otdr-tables-row {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+.otdr-table-col {
+  flex: 1;
+  min-width: 0;
+}

@@ -178,11 +178,15 @@ async def upload_otd_risk(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         cw_df, lw_df = data.parse_otd_risk_sheets(contents)
-        supplier_otd = data.compute_supplier_otd_report(cw_df)
+        supplier_otd  = data.compute_supplier_otd_report(cw_df)
+        monthly_otd   = data.compute_monthly_otd_report(cw_df)
+        summary_stats = data.compute_summary_stats(cw_df, lw_df)
         return {
-            "supplier_otd": supplier_otd,
-            "cw_rows": len(cw_df),
-            "lw_rows": len(lw_df),
+            "supplier_otd":   supplier_otd,
+            "monthly_otd":    monthly_otd,
+            "summary_stats":  summary_stats,
+            "cw_rows":        len(cw_df),
+            "lw_rows":        len(lw_df),
         }
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
