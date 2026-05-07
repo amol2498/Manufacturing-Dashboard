@@ -1125,8 +1125,9 @@ body {
 }
 
 .otdr-section-title {
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: center;
 }
 
 .otdr-table {
@@ -1241,6 +1242,14 @@ body {
 .otdr-val-green  { color: #16a34a; }
 .otdr-val-red    { color: #dc2626; }
 .otdr-val-orange { color: #d97706; }
+
+/* ── Site OTD – risk flag cells ── */
+.otdr-risk-cell      { font-weight: 600; white-space: nowrap; }
+.otdr-risk-emoji     { margin-right: 6px; }
+.otdr-risk-critical  { background: #fee2e2; color: #dc2626; }
+.otdr-risk-at-risk   { background: #fef9c3; color: #b45309; }
+.otdr-risk-on-track  { background: #dcfce7; color: #16a34a; }
+.otdr-risk-no-data   { color: #9ca3af; }
 
 /* ── OTD Risk – side-by-side table layout ── */
 .otdr-tables-row {

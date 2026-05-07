@@ -99,6 +99,53 @@ function MonthlyOtdTable({ rows }) {
   )
 }
 
+// ── Site OTD table ──────────────────────────────────────────────────────────────
+
+const RISK_CONFIG = {
+  critical: { emoji: '🔴', label: 'Critical', cls: 'otdr-risk-critical' },
+  at_risk:  { emoji: '🟡', label: 'At Risk',  cls: 'otdr-risk-at-risk'  },
+  on_track: { emoji: '🟢', label: 'On Track', cls: 'otdr-risk-on-track' },
+  no_data:  { emoji: '',   label: '—',        cls: 'otdr-risk-no-data'  },
+}
+
+function SiteOtdTable({ rows }) {
+  if (!rows.length) return null
+  return (
+    <div className="table-container">
+      <table className="pivot-table otdr-table">
+        <thead>
+          <tr>
+            <th className="otdr-th otdr-th-supplier">Site</th>
+            <th className="otdr-th">Lines</th>
+            <th className="otdr-th otdr-th-ontime">On Time</th>
+            <th className="otdr-th otdr-th-delayed">Delayed</th>
+            <th className="otdr-th otdr-th-otd">OTD %</th>
+            <th className="otdr-th">Risk Flag</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const rf = RISK_CONFIG[row.risk_flag] ?? RISK_CONFIG.no_data
+            return (
+              <tr key={i} className="otdr-row">
+                <td className="otdr-td otdr-supplier">{row.site}</td>
+                <td className="otdr-td">{row.lines}</td>
+                <td className="otdr-td otdr-ontime">{row.on_time}</td>
+                <td className="otdr-td otdr-delayed">{row.delayed}</td>
+                <td className="otdr-td otdr-otd-pct">{row.lines > 0 ? `${row.otd_pct}%` : '—'}</td>
+                <td className={`otdr-td otdr-risk-cell ${rf.cls}`}>
+                  {rf.emoji && <span className="otdr-risk-emoji">{rf.emoji}</span>}
+                  {rf.label}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Supplier OTD table ──────────────────────────────────────────────────────────
 
 function SupplierOtdTable({ rows }) {
@@ -180,6 +227,7 @@ export default function OTDRiskDashboard() {
   const [fileName, setFileName]     = useState('')
   const [errorMsg, setErrorMsg]     = useState('')
   const [supplierOtd, setSupplierOtd]   = useState([])
+  const [siteOtd, setSiteOtd]           = useState([])
   const [monthlyOtd, setMonthlyOtd]     = useState([])
   const [summaryStats, setSummaryStats] = useState(null)
   const fileRef = useRef(null)
@@ -192,6 +240,7 @@ export default function OTDRiskDashboard() {
     try {
       const result = await uploadOtdRisk(file)
       setSupplierOtd(result.supplier_otd)
+      setSiteOtd(result.site_otd ?? [])
       setMonthlyOtd(result.monthly_otd ?? [])
       setSummaryStats(result.summary_stats)
       setFileName(file.name)
@@ -264,11 +313,17 @@ export default function OTDRiskDashboard() {
               <div className="section">
                 <div className="otdr-tables-row">
                   <div className="otdr-table-col">
-                    <h2 className="section-title otdr-section-title">SUPPLIER OTD</h2>
+                    <h2 className="section-title otdr-section-title">Supplier OTD</h2>
                     <SupplierOtdTable rows={supplierOtd} />
+                    {siteOtd.length > 0 && (
+                      <>
+                        <h2 className="section-title otdr-section-title" style={{ marginTop: 24 }}>Site OTD</h2>
+                        <SiteOtdTable rows={siteOtd} />
+                      </>
+                    )}
                   </div>
                   <div className="otdr-table-col">
-                    <h2 className="section-title otdr-section-title">MONTHLY OTD</h2>
+                    <h2 className="section-title otdr-section-title">Monthly OTD</h2>
                     <MonthlyOtdTable rows={monthlyOtd} />
                     <ProjectedOtdChart rows={monthlyOtd} />
                   </div>

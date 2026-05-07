@@ -133,3 +133,11 @@ i.e. SUM(Current Week data) where Current Week data('month') =" report month"  a
 
 
 
+Create a new dashboard called "Site OTD" just below  Supplier OTD.
+the functioality is same as Supplier Dashboard, except that Site is used instaed of supplier.
+the formula for Riask flag:
+"Display a risk flag based on OTD percentage:
+Show 🔴 Critical (red) when OTD rate is below 80%
+Show 🟡 At Risk (yellow) when OTD rate is between 80% and 91.99%
+Show 🟢 On Track (green) when OTD rate is 92% or higher
+Show — No Data when there are no lines/records to evaluate (total lines = 0)" 

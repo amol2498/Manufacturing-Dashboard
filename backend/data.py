@@ -757,6 +757,58 @@ def compute_monthly_otd_report(cw_df: pd.DataFrame) -> list:
     return rows
 
 
+def compute_site_otd_report(cw_df: pd.DataFrame) -> list:
+    """Compute Site OTD report from CW_Data, grouped by Site column.
+
+    Lines   = count(Site=s AND On-Time/Delay in ["On time","Delay"])
+    On Time = count(Site=s AND On-Time/Delay="On time")
+    Delayed = count(Site=s AND On-Time/Delay="Delay")
+    OTD %   = On Time / Lines * 100
+    Risk    = Critical(<80) | At Risk(80-91.99) | On Track(>=92) | No Data(0 lines)
+    """
+    cw_df = _valid_rows(cw_df)
+
+    col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in cw_df.columns}
+    site_col_name = next(
+        (col_lower[k] for k in ['site', 'ship to site', 'ship site', 'plant', 'location', 'destination'] if k in col_lower),
+        None
+    )
+    if site_col_name is None:
+        return []
+
+    site_series = cw_df[site_col_name].astype(str).str.replace('\xa0', ' ').str.strip()
+    sites = sorted(s for s in site_series.unique() if s and s.lower() not in ('nan', 'none', ''))
+    j_series = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+
+    rows = []
+    for site in sites:
+        mask    = site_series == site
+        lines   = int((mask & j_series.isin(['on time', 'delay'])).sum())
+        on_time = int((mask & (j_series == 'on time')).sum())
+        delayed = int((mask & (j_series == 'delay')).sum())
+        otd_pct = round(on_time / lines * 100, 1) if lines > 0 else 0.0
+
+        if lines == 0:
+            risk_flag = 'no_data'
+        elif otd_pct < 80:
+            risk_flag = 'critical'
+        elif otd_pct < 92:
+            risk_flag = 'at_risk'
+        else:
+            risk_flag = 'on_track'
+
+        rows.append({
+            'site':      site,
+            'lines':     lines,
+            'on_time':   on_time,
+            'delayed':   delayed,
+            'otd_pct':   otd_pct,
+            'risk_flag': risk_flag,
+        })
+
+    return rows
+
+
 def get_records_data(session_id, month, stage, item_number=None, po_number=None):
     df = get_df(session_id)
     if df.empty or "Month" not in df.columns or "Stages" not in df.columns:
