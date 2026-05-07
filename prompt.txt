@@ -133,7 +133,7 @@ i.e. SUM(Current Week data) where Current Week data('month') =" report month"  a
 
 
 
-Create a new dashboard called "Site OTD" just below  Supplier OTD.
+Create a new menu iteam and page for dashboard called "Site OTD" just below  Supplier OTD.
 the functioality is same as Supplier Dashboard, except that Site is used instaed of supplier.
 the formula for Riask flag:
 "Display a risk flag based on OTD percentage:
@@ -141,3 +141,130 @@ Show 🔴 Critical (red) when OTD rate is below 80%
 Show 🟡 At Risk (yellow) when OTD rate is between 80% and 91.99%
 Show 🟢 On Track (green) when OTD rate is 92% or higher
 Show — No Data when there are no lines/records to evaluate (total lines = 0)" 
+
+
+###################
+Details Dashboard:
+
+Create a dynamic "Details" menu and  dashboard that displays all delayed delivery lines from supply chain data. The dashboard pulls data from a source table (CW_Data) and only shows rows where Status = "Delay". All other rows should be blank/filtered out.
+
+Source Data Structure (CW_Data)
+Column	Header	Description
+A	Date	Report date
+B	Supplier	Supplier name (e.g., Indo-MIM, JJG Aero, Maini)
+C	Site	Delivery site (e.g., Rockford, Drakes, Colorado, Niles)
+D	Item #	Part/Item number
+E	PO #	Purchase Order number
+F	Qty	Quantity ordered
+G	Due Date	Original due date
+H	Notes	Additional notes
+I	Stage	Current stage (Shipped, Initial Stage, Intermediate Stage, Final Stage, etc.)
+J	On-Time/Delay	On-time or Delay status
+K	Delay Category	Category of delay (On time, Delay, Past Due)
+L	Commit Date	Supplier's committed delivery date
+M	Reason	Delay reason
+N	Status	KEY FILTER FIELD - "On time" or "Delay"
+O	Days Late	Number of days past due (positive = late)
+P	Days Until Due	Days remaining until due (negative = past due)
+Q	Month	Month bucket (e.g., "May 2026")
+Output Table Structure (Details Dashboard)
+Column	Header	Source Formula Logic
+B	Item #	IF(CW_Data.Status == "Delay", CW_Data.Item#, "")
+C	PO #	IF(CW_Data.Status == "Delay", CW_Data.PO#, "")
+D	Supplier	IF(CW_Data.Status == "Delay", CW_Data.Supplier, "")
+E	Site	IF(CW_Data.Status == "Delay", CW_Data.Site, "")
+F	Due Date	IF(CW_Data.Status == "Delay", CW_Data.DueDate, "")
+G	Days Late	IF(CW_Data.Status == "Delay", CW_Data.DaysLate, "")
+H	Stage	IF(CW_Data.Status == "Delay", CW_Data.Stage, "")
+I	Qty Due	IF(CW_Data.Status == "Delay", CW_Data.Qty, "")
+J	Aging Bucket	Calculated field - See formula below
+K	Category	IF(CW_Data.Status == "Delay", CW_Data.DelayCategory, "")
+L	Delay Reason	IF(CW_Data.Status == "Delay", CW_Data.Reason, "")
+M	Commit Date	IF(CW_Data.Status == "Delay", CW_Data.CommitDate, "")
+Formula Explanations
+1. Basic Column Formula Pattern
+=IFERROR(IF(CW_Data!N[row]="Delay", CW_Data![source_column][row], ""), "")
+Logic:
+
+Check if the Status column (N) equals "Delay"
+If TRUE → Pull the corresponding value from the source column
+If FALSE → Return empty string ""
+Wrap in IFERROR to handle any errors gracefully
+2. Column Mapping (Source → Details)
+
+Column-by-Column Breakdown
+Details Column	Formula Explanation
+Item # (B)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Item # from column D. Otherwise, leave blank."
+PO # (C)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Purchase Order number from column E. Otherwise, leave blank."
+Supplier (D)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Supplier name from column B. Otherwise, leave blank."
+Site (E)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Site location from column C. Otherwise, leave blank."
+Due Date (F)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Due Date from column G. Otherwise, leave blank."
+Days Late (G)	"Look at CW_Data column N (Status). If it says 'Delay', pull the number of Days Late from column O. Otherwise, leave blank."
+Stage (H)	"Look at CW_Data column N (Status). If it says 'Delay', pull the current Stage (e.g., Shipped, Initial Stage) from column I. Otherwise, leave blank."
+Qty Due (I)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Quantity from column F. Otherwise, leave blank."
+Category (K)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Delay Category (On time/Delay/Past Due) from column K. Otherwise, leave blank."
+Delay Reason (L)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Reason from column M. Otherwise, leave blank."
+Commit Date (M)	"Look at CW_Data column N (Status). If it says 'Delay', pull the Commit Date from column L. Otherwise, leave blank."
+Why IFERROR?
+The outer IFERROR(..., "") wrapper is a safety net:
+
+If the referenced row doesn't exist (e.g., CW_Data has fewer rows)
+If there's a data type mismatch
+If any unexpected error occurs
+→ The formula gracefully returns blank instead of showing an ugly #REF! or #VALUE! error.
+
+Why the "Sparse Display" Approach?
+This design means:
+
+✅ Every row in Details has a formula
+✅ Only rows where Status = "Delay" show data
+✅ On-Time rows appear as blank lines
+✅ When you add new data to CW_Data and refresh, delays automatically appear
+Aging Bucket (Column J) — Special Formula
+This is the only calculated field that doesn't pull directly from CW_Data:
+
+=IFERROR(IF(CW_Data!N{row}="Delay",
+  IF(CW_Data!O{row}>60, "60+ Days",
+    IF(CW_Data!O{row}>30, "31-60 Days",
+      IF(CW_Data!O{row}>14, "15-30 Days",
+        IF(CW_Data!O{row}>7, "8-14 Days", "1-7 Days")))), ""), "")
+In plain English: "If this is a delayed item, categorize it into an aging bucket based on how many days late it is: 60+, 31-60, 15-30, 8-14, or 1-7 days."
+
+
+Aging Bucket Logic:
+
+Days Late	Bucket
+> 60 days	"60+ Days"
+31-60 days	"31-60 Days"
+15-30 days	"15-30 Days"
+8-14 days	"8-14 Days"
+1-7 days	"1-7 Days"
+
+Key Implementation Notes
+Sparse Display Pattern: The original Excel uses a "sparse" display where every row has a formula, but only rows with Status="Delay" show data. In React/Python, you should filter first rather than showing blank rows.
+
+Row Offset: In Excel, Details row 64 maps to CW_Data row 59 (offset of 5 rows due to header structure). In code, use zero-indexed arrays after filtering.
+
+Error Handling: The IFERROR wrapper ensures graceful handling of:
+
+Missing data
+Invalid references
+Type mismatches
+Sorting Recommendation: Sort by Days Late descending to show worst offenders first.
+
+Stage Values: Common stages include:
+
+Shipped
+Initial Stage
+Intermediate Stage
+Final Stage
+FG (Finished Goods)
+NRE PO
+PPAP PO
+Yet to Start
+NO RM (No Raw Material)
+Category Values:
+"On time"
+"Delay"
+"Past Due"
+
