@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList, ResponsiveContainer } from 'recharts'
 import SiteHeader from './SiteHeader'
 import { uploadOtdRisk } from '../api/client'
 
@@ -133,6 +134,45 @@ function SupplierOtdTable({ rows }) {
   )
 }
 
+// ── Projected OTD % bar chart ───────────────────────────────────────────────────
+
+function ProjectedOtdChart({ rows }) {
+  const values = rows.filter(r => r.otd_pct != null).map(r => r.otd_pct)
+  const yMin = values.length > 0 ? Math.floor(Math.min(...values) / 2) * 2 - 4 : 0
+  const yMax = values.length > 0 ? Math.ceil(Math.max(...values) / 2) * 2     : 100
+  const ticks = []
+  for (let t = yMin; t <= yMax; t += 2) ticks.push(t)
+
+  return (
+    <div className="otdr-chart-wrap">
+      <h2 className="section-title otdr-chart-title">Projected OTD %</h2>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={rows} margin={{ top: 24, right: 16, left: 8, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+          <YAxis
+            domain={[yMin, yMax]}
+            ticks={ticks}
+            tickFormatter={v => `${v.toFixed(1)}%`}
+            tick={{ fontSize: 11 }}
+            width={52}
+          />
+          <Tooltip formatter={v => v != null ? `${v}%` : '—'} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar dataKey="otd_pct" name="OTD %" fill="#4472c4" maxBarSize={56}>
+            <LabelList
+              dataKey="otd_pct"
+              position="top"
+              formatter={v => v != null ? `${v}%` : ''}
+              style={{ fontSize: 11, fill: '#333', fontWeight: 600 }}
+            />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 // ── Main page ───────────────────────────────────────────────────────────────────
 
 export default function OTDRiskDashboard() {
@@ -220,7 +260,7 @@ export default function OTDRiskDashboard() {
                 <SummaryBar stats={summaryStats} />
               </div>
 
-              {/* SUPPLIER OTD + MONTHLY OTD side by side */}
+              {/* SUPPLIER OTD + MONTHLY OTD + PROJECTED OTD CHART */}
               <div className="section">
                 <div className="otdr-tables-row">
                   <div className="otdr-table-col">
@@ -230,6 +270,7 @@ export default function OTDRiskDashboard() {
                   <div className="otdr-table-col">
                     <h2 className="section-title otdr-section-title">MONTHLY OTD</h2>
                     <MonthlyOtdTable rows={monthlyOtd} />
+                    <ProjectedOtdChart rows={monthlyOtd} />
                   </div>
                 </div>
               </div>
