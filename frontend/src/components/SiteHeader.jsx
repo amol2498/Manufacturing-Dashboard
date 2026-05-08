@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { label: 'Week on Week Comparison', path: '/wow-dashboard' },
   { label: 'WoW Comparison', path: '/wow-comparison' },
   { label: 'OTD Risk Intelligence Dashboard', path: '/otd-risk-dashboard' },
+  { label: 'OTD Projections Dashboard', path: '/otd-projections-dashboard' },
   { label: 'Details', path: '/details' },
 ]
 

@@ -985,6 +985,184 @@ def compute_wow_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
     }
 
 
+def compute_otd_projections(cw_df: pd.DataFrame) -> dict:
+    """Compute OTD Projections dashboard data from CW_Data sheet.
+
+    Section 1 – Monthly OTD Summary: next 6 forward-looking months, one row per month.
+    Section 2 – At-Risk Pipeline: orders in early/risky stages due within 60 days.
+
+    Column mapping (0-indexed from spec):
+      B=1  Supplier, C=2  Site,       D=3  Item #,
+      G=6  Due Date, I=8  Stage,      J=9  On-Time/Delay,
+      P=15 Days Until Due,            Q=16 Month
+    """
+
+    def _raw(df, names, idx):
+        col_lower = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+        for name in (names if isinstance(names, list) else [names]):
+            if name.strip().lower() in col_lower:
+                return df[col_lower[name.strip().lower()]]
+        return df.iloc[:, idx] if idx is not None and df.shape[1] > idx else pd.Series([''] * len(df), index=df.index)
+
+    def _clean(val):
+        s = str(val).replace('\xa0', ' ').strip()
+        return '' if s.lower() in ('nan', 'none', 'nat') else s
+
+    def _fmt_date(val):
+        if pd.isna(val) if hasattr(val, '__class__') and val.__class__.__name__ in ('float', 'NaTType') else False:
+            return ''
+        s = _clean(val)
+        if not s:
+            return ''
+        try:
+            return pd.Timestamp(val).strftime('%d-%b-%y')
+        except Exception:
+            return s
+
+    cw_valid = _valid_rows(cw_df)
+
+    # Shared column accessors (all derived from cw_valid for index alignment)
+    month_col    = _raw(cw_valid, ['month'], 16).astype(str).str.replace('\xa0', ' ').str.strip()
+    j_col        = _otdr_col(cw_valid, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+    stage_col    = _raw(cw_valid, ['stage', 'stages'], 8).astype(str).str.replace('\xa0', ' ').str.strip()
+    days_due_raw = _raw(cw_valid, ['days until due', 'days_until_due', 'days due'], 15)
+    days_due_num = pd.to_numeric(days_due_raw, errors='coerce')
+
+    _abbr = {'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,
+             'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12}
+
+    def _parse_month_sort(m):
+        parts = str(m).strip().split()
+        if len(parts) >= 2:
+            try:
+                return (int(parts[1]), _abbr.get(parts[0].lower()[:3], 0))
+            except ValueError:
+                pass
+        return (9999, 0)
+
+    def _month_to_period(m):
+        parts = str(m).strip().split()
+        if len(parts) >= 2:
+            try:
+                year = int(parts[1])
+                month_num = _abbr.get(parts[0].lower()[:3], 0)
+                if month_num:
+                    return pd.Period(year=year, month=month_num, freq='M')
+            except Exception:
+                pass
+        return None
+
+    today = pd.Timestamp.now().normalize()
+    current_period = pd.Period(today, freq='M')
+
+    all_months = sorted(
+        [m for m in month_col.unique() if m and m.lower() not in ('nan', 'none', '')],
+        key=_parse_month_sort
+    )
+    target_months = [m for m in all_months if (lambda p: p is not None and p >= current_period)(_month_to_period(m))][:6]
+
+    # ── Section 1: Monthly OTD Summary ──────────────────────────────────────────
+    monthly_summary = []
+    for month in target_months:
+        mask    = month_col.str.lower() == month.lower()
+        on_time = int((mask & (j_col == 'on time')).sum())
+        delayed = int((mask & (j_col == 'delay')).sum())
+        total   = on_time + delayed
+
+        if total > 0:
+            otd_actual   = round(on_time / total * 100, 1)
+            otd_forecast = round(otd_actual * 1.02, 1)
+        else:
+            otd_actual   = 0.0
+            otd_forecast = 95.0
+
+        if total == 0:
+            risk_label, risk_level = 'No Data', 'no_data'
+        elif otd_actual < 80:
+            risk_label, risk_level = '🔴 CRITICAL — <80% Act immediately', 'critical'
+        elif otd_actual < 90:
+            risk_label, risk_level = '🔴 Below 90% target — Expedite delays', 'warning'
+        elif otd_actual < 95:
+            risk_label, risk_level = '🟡 Below 95% target — Monitor closely', 'caution'
+        else:
+            risk_label, risk_level = '🟢 On Target ≥95%', 'good'
+
+        monthly_summary.append({
+            'month':        month,
+            'total_lines':  total,
+            'on_time':      on_time,
+            'delayed':      delayed,
+            'otd_actual':   otd_actual,
+            'otd_forecast': otd_forecast,
+            'risk_label':   risk_label,
+            'risk_level':   risk_level,
+        })
+
+    # ── Section 2: At-Risk Pipeline ─────────────────────────────────────────────
+    AT_RISK_STAGES = frozenset({
+        'initial stage', 'intermediate stage', 'yet to start',
+        'yet to launch', 'no rm', 'intermediate',
+    })
+
+    supplier_col = _raw(cw_valid, ['supplier', 'supplier name'], 1).astype(str).str.replace('\xa0', ' ').str.strip()
+    site_col     = _raw(cw_valid, ['site', 'location', 'plant'], 2).astype(str).str.replace('\xa0', ' ').str.strip()
+    item_col     = _raw(cw_valid, ['item #', 'item#', 'item number'], 3).astype(str).str.replace('\xa0', ' ').str.strip()
+    due_date_col = _raw(cw_valid, ['due date', 'due_date'], 6)
+
+    at_risk_rows = []
+    for i in range(len(cw_valid)):
+        stage    = stage_col.iloc[i].lower().strip()
+        days_due = days_due_num.iloc[i]
+
+        if stage not in AT_RISK_STAGES:
+            continue
+        if pd.isna(days_due) or days_due <= 0 or days_due > 60:
+            continue
+
+        days_int = int(days_due)
+        if   days_int <= 7:  risk_lv, risk_sort = '🚨 CRITICAL', 1
+        elif days_int <= 14: risk_lv, risk_sort = '🔴 HIGH',     2
+        elif days_int <= 30: risk_lv, risk_sort = '🟡 MEDIUM',   3
+        else:                risk_lv, risk_sort = '🔵 WATCH',    4
+
+        at_risk_rows.append({
+            'item_number':    _clean(item_col.iloc[i]),
+            'supplier':       _clean(supplier_col.iloc[i]),
+            'site':           _clean(site_col.iloc[i]),
+            'due_date':       _fmt_date(due_date_col.iloc[i]),
+            'days_until_due': days_int,
+            'stage':          _clean(stage_col.iloc[i]),
+            'risk_level':     risk_lv,
+            '_risk_sort':     risk_sort,
+        })
+
+    at_risk_rows.sort(key=lambda r: (r['days_until_due'], r['_risk_sort']))
+    for r in at_risk_rows:
+        del r['_risk_sort']
+
+    # Dynamic date-range label (e.g. "May–Oct 2026")
+    if len(target_months) >= 2:
+        fp, lp = target_months[0].split(), target_months[-1].split()
+        if len(fp) >= 2 and len(lp) >= 2:
+            date_range_label = (
+                f"{fp[0]}–{lp[0]} {fp[1]}" if fp[1] == lp[1]
+                else f"{fp[0]} {fp[1]}–{lp[0]} {lp[1]}"
+            )
+        else:
+            date_range_label = f"{target_months[0]} – {target_months[-1]}"
+    elif len(target_months) == 1:
+        date_range_label = target_months[0]
+    else:
+        date_range_label = ''
+
+    return {
+        'monthly_summary':  monthly_summary,
+        'at_risk_pipeline': at_risk_rows,
+        'date_range_label': date_range_label,
+        'total_at_risk':    len(at_risk_rows),
+    }
+
+
 def get_records_data(session_id, month, stage, item_number=None, po_number=None):
     df = get_df(session_id)
     if df.empty or "Month" not in df.columns or "Stages" not in df.columns:

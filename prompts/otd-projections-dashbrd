@@ -1,0 +1,295 @@
+Create a new navigation menu and dashboard named "OTD Projections Dashboard" page as follows:
+Do all calculation at the backend service and not UI.
+Use dynamic values where ever applicable, do not use hard coded values
+
+## **Dashboard Overview**
+
+Build a **Supply Chain On-Time Delivery (OTD) Projections Dashboard** that provides a 6-month forward-looking view of delivery performance. The dashboard consists of two main components:
+
+1. **Monthly OTD Summary Table** — Shows actual and forecasted OTD performance by month
+2. **At-Risk Pipeline Table** — Shows orders at risk of delay based on current stage and time remaining
+
+---
+
+## **DATA SOURCE REQUIREMENTS**
+
+### Required Source Data Table: `CW_Data` (Current Week Data)
+The dashboard pulls from a source data table with the following columns:
+
+| Column | Field Name | Description |
+|--------|-----------|-------------|
+| B | Supplier | Name of the supplier (e.g., "Indo-MIM", "JJG Aero", "Maini") |
+| C | Site | Manufacturing/delivery site location (e.g., "Rockford", "Drakes", "Colorado", "Niles") |
+| D | Item # | Product/part number identifier |
+| G | Due Date | Expected delivery date |
+| I | Stage | Current production/delivery stage (see stage definitions below) |
+| J | On-Time/Delay | Status indicator with values: "On time" or "Delay" |
+| P | Days Until Due | Calculated field: number of days from current date until due date (positive = future, negative = past) |
+| Q | Month | Text representation of due date month (e.g., "May 2026", "Jun 2026") |
+
+### Stage Definitions (for At-Risk Classification)
+The following stages are considered **"at risk"** for potential delays:
+- `Initial Stage`
+- `Intermediate Stage`
+- `Yet to Start`
+- `Yet to launch`
+- `NO RM` (No Raw Material)
+- `Intermediate`
+
+---
+
+## **SECTION 1: MONTHLY OTD SUMMARY TABLE**
+
+### Purpose
+Display a month-by-month breakdown of On-Time Delivery performance for the next 6 months with actual results, forecasted results, and risk assessment.
+
+### Table Structure
+
+| Column | Header | Description |
+|--------|--------|-------------|
+| 1 | Month | Month name and year (e.g., "May 2026") |
+| 2 | Total Lines | Total number of order lines due in that month |
+| 3 | On Time | Count of order lines with "On time" status |
+| 4 | Delayed | Count of order lines with "Delay" status |
+| 5 | OTD % Actual | Actual On-Time Delivery percentage |
+| 6 | OTD Forecast | Forecasted OTD with 2% improvement assumption |
+| 7 | Risk Assessment | Color-coded risk indicator |
+
+### Calculation Logic for Each Column
+
+#### **Column: Total Lines**
+**Plain English:** Count ALL order lines (both "On time" AND "Delay") where the Month column matches the target month.
+```
+Total Lines = Count of records where:
+  - Month equals the target month (e.g., "May 2026") AND
+  - Status is "On time"
+  PLUS
+  Count of records where:
+  - Month equals the target month AND
+  - Status is "Delay"
+```
+*If no data or error, return 0*
+
+#### **Column: On Time**
+**Plain English:** Count only the order lines marked as "On time" for that specific month.
+```
+On Time = Count of records where:
+  - Month equals the target month AND
+  - On-Time/Delay status equals "On time"
+```
+*If no data or error, return 0*
+
+#### **Column: Delayed**
+**Plain English:** Count only the order lines marked as "Delay" for that specific month.
+```
+Delayed = Count of records where:
+  - Month equals the target month AND
+  - On-Time/Delay status equals "Delay"
+```
+*If no data or error, return 0*
+
+#### **Column: OTD % Actual**
+**Plain English:** Calculate the percentage of on-time deliveries by dividing On Time count by Total Lines.
+```
+OTD % Actual = On Time ÷ Total Lines
+```
+*If Total Lines is 0 or division error, return 0*
+*Display as percentage (e.g., 89.1%)*
+
+#### **Column: OTD Forecast**
+**Plain English:** Apply a 2% improvement factor to the actual OTD rate as a forecasted target.
+```
+IF Total Lines > 0:
+    OTD Forecast = (On Time ÷ Total Lines) × 1.02
+ELSE:
+    OTD Forecast = 95% (default target)
+```
+*If error, return 0*
+
+#### **Column: Risk Assessment**
+**Plain English:** Assign a color-coded risk indicator based on the OTD Forecast percentage using a tiered threshold system.
+
+```
+IF Total Lines = 0:
+    Display: "No Data"
+ELSE IF OTD Forecast < 80%:
+    Display: "🔴 CRITICAL — <80% Act immediately"
+    Color: Red (critical)
+ELSE IF OTD Forecast < 90%:
+    Display: "🔴 Below 90% target — Expedite delays"
+    Color: Red (warning)
+ELSE IF OTD Forecast < 95%:
+    Display: "🟡 Below 95% target — Monitor closely"
+    Color: Yellow (caution)
+ELSE (OTD Forecast ≥ 95%):
+    Display: "🟢 On Target ≥95%"
+    Color: Green (good)
+```
+
+### Risk Assessment Thresholds Summary
+| Threshold | Icon | Label | Action |
+|-----------|------|-------|--------|
+| < 80% | 🔴 | CRITICAL | Act immediately |
+| 80-89% | 🔴 | Below 90% target | Expedite delays |
+| 90-94% | 🟡 | Below 95% target | Monitor closely |
+| ≥ 95% | 🟢 | On Target | Maintain performance |
+
+---
+
+## **SECTION 2: AT-RISK PIPELINE TABLE**
+
+### Purpose
+Identify and display order lines that are **at risk of becoming delayed** based on:
+1. Their current production/delivery stage (early or intermediate stages)
+2. Time remaining until the due date (within 60 days)
+
+### Qualifying Criteria for At-Risk Items
+An order line appears in this table ONLY if ALL of the following conditions are TRUE:
+
+```
+Condition 1 - Stage Check:
+  The current Stage must be one of:
+  • "Initial Stage"
+  • "Intermediate Stage"
+  • "Yet to Start"
+  • "Yet to launch"
+  • "NO RM"
+  • "Intermediate"
+
+Condition 2 - Future Due Date:
+  Days Until Due must be GREATER than 0 (not past due)
+
+Condition 3 - Within 60-Day Window:
+  Days Until Due must be LESS THAN OR EQUAL TO 60
+```
+
+**If ANY condition is false, the row should display as blank/empty**
+
+### Table Structure
+
+| Column | Header | Source Field | Description |
+|--------|--------|--------------|-------------|
+| 1 | Item # | Item # (Column D) | Part number |
+| 2 | Supplier | Supplier (Column B) | Supplier name |
+| 3 | Site | Site (Column C) | Delivery location |
+| 4 | Due Date | Due Date (Column G) | Expected delivery date |
+| 5 | Days Until Due | Days Until Due (Column P) | Days remaining |
+| 6 | Stage | Stage (Column I) | Current production stage |
+| 7 | Risk Level | *Calculated* | Urgency classification |
+
+### Days until due calculation logic
+
+
+This formula is used in the "Days Until Due" column of the At-Risk Pipeline table. Here's what it does step-by-step:
+
+What This Formula Does:
+"Show me the number of days until this order is due, BUT ONLY IF the order is in an early/risky production stage AND is due within the next 60 days. Otherwise, show nothing."
+
+Breaking It Down:
+Part	What It Checks	Plain English
+MATCH(CW_Data!I59, {"Initial Stage","Intermediate Stage","Yet to Start","Yet to launch","NO RM","Intermediate"}, 0)	Is the Stage risky?	"Is this order's current stage one of the 'at-risk' stages?" (stages that are early in the process and might not finish on time)
+ISNUMBER(...)	Did we find a match?	"Did we find the stage in our list of risky stages? If yes, this returns TRUE"
+CW_Data!P59 > 0	Is it a future order?	"Is this order due in the future (not already past due)?"
+CW_Data!P59 <= 60	Is it due within 60 days?	"Is this order due within the next 60 days?"
+* (multiply)	All conditions must be TRUE	The multiplication acts like AND logic — ALL three conditions must be true
+CW_Data!P59	The value to display	"If all conditions pass, show the actual 'Days Until Due' value"
+""	Otherwise blank	"If any condition fails, show nothing (blank cell)"
+IFERROR(..., "")	Error handling	"If anything goes wrong (like missing data), just show blank instead of an error"
+The Three Conditions (ALL must be TRUE):
+✅ Condition 1: Stage is "at-risk" (Initial, Intermediate, Yet to Start, Yet to launch, NO RM, or Intermediate)
+     AND
+✅ Condition 2: Days Until Due > 0 (order is not past due)
+     AND  
+✅ Condition 3: Days Until Due ≤ 60 (order is due within the next 60 days)
+Why This Logic?
+This formula filters the At-Risk Pipeline to show only orders that need attention NOW:
+
+Orders in early stages that might not finish on time
+Orders that are coming up soon (within 60 days)
+Excludes past-due orders (handled separately)
+Excludes orders far in the future (low urgency)
+Example Outcomes:
+Stage	Days Until Due	Result	Why
+Initial Stage	15	15	✅ At-risk stage, future, within 60 days
+Shipped	10	(blank)	❌ "Shipped" is not an at-risk stage
+Intermediate Stage	-5	(blank)	❌ Past due (negative days)
+Initial Stage	75	(blank)
+
+
+
+### Risk Level Calculation Logic
+
+**Plain English:** Assign a risk level based on how many days remain until the due date. Closer dates = higher risk.
+
+```
+IF Days Until Due ≤ 7 days:
+    Display: "🚨 CRITICAL"
+    Priority: Highest - Immediate attention required
+    
+ELSE IF Days Until Due ≤ 14 days (8-14):
+    Display: "🔴 HIGH"
+    Priority: High - Escalate and expedite
+    
+ELSE IF Days Until Due ≤ 30 days (15-30):
+    Display: "🟡 MEDIUM"
+    Priority: Medium - Monitor closely
+    
+ELSE (31-60 days):
+    Display: "🔵 WATCH"
+    Priority: Low - Track progress
+```
+
+### Risk Level Thresholds Summary
+| Days Until Due | Icon | Risk Level | Action Required |
+|----------------|------|------------|-----------------|
+| 1-7 days | 🚨 | CRITICAL | Immediate escalation |
+| 8-14 days | 🔴 | HIGH | Expedite and monitor daily |
+| 15-30 days | 🟡 | MEDIUM | Review weekly, escalate if no progress |
+| 31-60 days | 🔵 | WATCH | Track in regular reviews |
+
+---
+
+## **IMPLEMENTATION NOTES**
+
+### Data Processing Flow
+1. **Load** source data from the CW_Data table
+2. **Filter** based on criteria (for At-Risk table) or **aggregate** (for Monthly table)
+3. **Calculate** derived fields (OTD %, Risk Level)
+4. **Apply** conditional formatting/styling based on thresholds
+5. **Display** with appropriate icons and color coding
+
+### Error Handling
+- All calculations should gracefully handle:
+  - Division by zero (return 0 or "No Data")
+  - Missing data (return empty/blank)
+  - Invalid stage values (do not include in At-Risk table)
+
+### Sorting Recommendations
+- **Monthly Table**: Sort by Month chronologically
+- **At-Risk Table**: Sort by Days Until Due ascending (most urgent first), then by Risk Level
+
+## **VISUAL DESIGN SPECIFICATIONS**
+
+### Color Palette
+| Element | Color | Hex Code |
+|---------|-------|----------|
+| Critical/Red | Alert Red | #E74C3C |
+| Warning/Yellow | Caution Yellow | #F39C12 |
+| Success/Green | Safe Green | #27AE60 |
+| Watch/Blue | Info Blue | #3498DB |
+| Background | Light Gray | #F8F9FA |
+| Headers | Dark Blue | #2C3E50 |
+
+### Icon Usage
+- 🔴 Red circle: Below target performance
+- 🟡 Yellow circle: Approaching threshold
+- 🟢 Green circle: On target
+- 🚨 Siren: Critical urgency (≤7 days)
+- 🔵 Blue circle: Watch/monitor status
+
+### Layout Recommendations
+1. **Header Section**: Dashboard title with date range (e.g., "OTD Projections — May–Oct 2026")
+2. **Monthly Table**: Full-width table with horizontal scroll if needed
+3. **At-Risk Table**: Scrollable list with pagination if >50 items
+4. **Legend**: Include risk level legend for user reference
+

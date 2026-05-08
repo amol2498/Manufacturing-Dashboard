@@ -132,3 +132,9 @@ export async function uploadDetails(file) {
   formData.append('file', file)
   return apiFetch(`${BASE_URL}/upload-details`, { method: 'POST', body: formData })
 }
+
+export async function uploadOtdProjections(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-otd-projections`, { method: 'POST', body: formData })
+}
