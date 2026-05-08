@@ -1,4 +1,5 @@
 import pandas as pd
+import openpyxl
 import os
 import io
 import time
@@ -630,23 +631,38 @@ def compute_summary_stats(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
     }
 
 
+def _sheet_to_df(ws) -> pd.DataFrame:
+    """Read an openpyxl worksheet into a DataFrame.
+    Always uses row index 2 (Excel row 3) as the header — identical to pd.read_excel(header=2).
+    Only data rows (index 3+) have blank rows filtered out, so all suppliers including late
+    rows like PMI at row 986 are captured regardless of the file's declared used-range.
+    """
+    all_rows = list(ws.iter_rows(values_only=True))
+    if len(all_rows) < 3:
+        return pd.DataFrame()
+    header = [
+        str(h).replace('\xa0', ' ').strip() if h is not None else f'_col{i}'
+        for i, h in enumerate(all_rows[2])
+    ]
+    data_rows = [
+        [cell if cell is not None else '' for cell in row]
+        for row in all_rows[3:]
+        if any(cell is not None for cell in row)
+    ]
+    df = pd.DataFrame(data_rows, columns=header)
+    df.columns = df.columns.astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+    return df
+
+
 def parse_otd_risk_sheets(file_bytes: bytes):
     """Parse LW_Data and CW_Data sheets from the OTD Risk Excel file.
     Excel row 3 is used as the column header row; data begins at Excel row 4.
+    Uses openpyxl directly to read ALL non-blank rows regardless of used-range metadata.
     Returns (cw_df, lw_df) with named columns for reliable lookups.
     """
-    source = io.BytesIO(file_bytes)
-    cw_df = pd.read_excel(
-        source, sheet_name='CW_Data', header=2,
-        engine='openpyxl', engine_kwargs={'data_only': True},
-    )
-    source.seek(0)
-    lw_df = pd.read_excel(
-        source, sheet_name='LW_Data', header=2,
-        engine='openpyxl', engine_kwargs={'data_only': True},
-    )
-    cw_df.columns = cw_df.columns.astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
-    lw_df.columns = lw_df.columns.astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+    cw_df = _sheet_to_df(wb['CW_Data'])
+    lw_df = _sheet_to_df(wb['LW_Data'])
     return cw_df, lw_df
 
 
@@ -672,24 +688,30 @@ def compute_supplier_otd_report(cw_df: pd.DataFrame) -> list:
     if cw_df.shape[1] <= COL_SUPPLIER:
         return []
 
-    # Supplier: keep original case for display, only strip whitespace
     sup_col_lower = {str(c).strip().lower(): c for c in cw_df.columns}
     sup_col_name  = next((sup_col_lower[k] for k in ['supplier', 'supplier name'] if k in sup_col_lower), None)
-    sup_series = (
-        cw_df[sup_col_name].astype(str).str.strip()
-        if sup_col_name else cw_df.iloc[:, COL_SUPPLIER].astype(str).str.strip()
+    sup_raw = (
+        cw_df[sup_col_name].astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+        if sup_col_name else cw_df.iloc[:, COL_SUPPLIER].astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
     )
-    suppliers = sorted(
-        s for s in sup_series.unique()
-        if s and s.lower() not in ('nan', 'none', '')
-    )
+    sup_ci = sup_raw.str.lower()
+
+    # Build display map: lowercase key → original display name (first occurrence wins)
+    display_map: dict = {}
+    for orig in sup_raw:
+        key = orig.lower()
+        if key and key not in ('nan', 'none', '') and key not in display_map:
+            display_map[key] = orig
+
+    suppliers = sorted(display_map.keys())
 
     j_series = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], COL_J)
     n_series = _otdr_col(cw_df, ['status'], COL_N)
 
     rows = []
-    for supplier in suppliers:
-        mask = sup_series == supplier
+    for sup_key in suppliers:
+        supplier = display_map[sup_key]
+        mask = sup_ci == sup_key
 
         cw_lines = int((mask & j_series.isin(['on time', 'delay'])).sum()) if len(j_series) else 0
         on_time  = int((mask & (j_series == 'on time')).sum())             if len(j_series) else 0
@@ -959,19 +981,37 @@ def compute_wow_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
     lw_site = _site_series(lw_df)
     cw_site = _site_series(cw_df)
 
+    # Case-insensitive versions for comparison
+    lw_sup_ci  = lw_sup.str.lower()
+    cw_sup_ci  = cw_sup.str.lower()
+    lw_site_ci = lw_site.str.lower()
+    cw_site_ci = cw_site.str.lower()
+
     def _clean_vals(s):
         return s[s.notna() & (s != '') & (s.str.lower() != 'nan')].tolist()
 
-    all_suppliers = sorted(set(_clean_vals(lw_sup) + _clean_vals(cw_sup)))
-    all_sites     = sorted(set(_clean_vals(lw_site) + _clean_vals(cw_site)))
+    def _display_map(lw_s, cw_s):
+        dm = {}
+        for v in _clean_vals(lw_s):
+            dm.setdefault(v.lower(), v)
+        for v in _clean_vals(cw_s):
+            dm[v.lower()] = v          # CW takes precedence for display
+        return dm
+
+    sup_dm  = _display_map(lw_sup, cw_sup)
+    site_dm = _display_map(lw_site, cw_site)
 
     supplier_rows = [
-        {'name': s, 'lw': int(((lw_sup == s) & lw_delayed_mask).sum()), 'cw': int(((cw_sup == s) & cw_delayed_mask).sum())}
-        for s in all_suppliers
+        {'name': sup_dm[k],
+         'lw': int(((lw_sup_ci == k) & lw_delayed_mask).sum()),
+         'cw': int(((cw_sup_ci == k) & cw_delayed_mask).sum())}
+        for k in sorted(sup_dm)
     ]
     site_rows = [
-        {'name': s, 'lw': int(((lw_site == s) & lw_delayed_mask).sum()), 'cw': int(((cw_site == s) & cw_delayed_mask).sum())}
-        for s in all_sites
+        {'name': site_dm[k],
+         'lw': int(((lw_site_ci == k) & lw_delayed_mask).sum()),
+         'cw': int(((cw_site_ci == k) & cw_delayed_mask).sum())}
+        for k in sorted(site_dm)
     ]
 
     return {
@@ -983,6 +1023,60 @@ def compute_wow_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
         'supplier_rows': supplier_rows,
         'site_rows':     site_rows,
     }
+
+
+def compute_supplier_delay_trend(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> list:
+    """Compute Supplier Delay Trend (WoW) for each unique supplier.
+
+    For each supplier:
+      LW Delays = COUNTIFS(LW_Data.Supplier=name, LW_Data.On-Time/Delay="Delay")
+      CW Delays = COUNTIFS(CW_Data.Supplier=name, CW_Data.On-Time/Delay="Delay")
+      Delta     = CW Delays - LW Delays
+      Trend     = "✅ Improved" if CW < LW, else "🔴 Worsened"
+
+    Sorted by Delta descending (worst/most-worsened first).
+    """
+    def _sup(df):
+        dc = {str(c).replace('\xa0', ' ').strip().lower(): c for c in df.columns}
+        col = next((dc[k] for k in ['supplier', 'supplier name'] if k in dc), None)
+        s = df[col] if col else df.iloc[:, 1]
+        return s.astype(str).str.replace('\xa0', ' ').str.strip()
+
+    cw_sup    = _sup(cw_df)
+    lw_sup    = _sup(lw_df)
+    cw_sup_ci = cw_sup.str.lower()
+    lw_sup_ci = lw_sup.str.lower()
+
+    cw_j   = _otdr_col(cw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+    lw_j   = _otdr_col(lw_df, ['on-time/delay', 'ontime/delay', 'on time/delay', 'ontime delay'], 9)
+
+    cw_delay = cw_j == 'delay'
+    lw_delay = lw_j == 'delay'
+
+    def _valid(s):
+        return [v for v in s.unique() if v and v.lower() not in ('nan', 'none', '')]
+
+    # Case-insensitive dedup: build display map (CW takes precedence)
+    display_map: dict = {}
+    for v in _valid(lw_sup): display_map.setdefault(v.lower(), v)
+    for v in _valid(cw_sup): display_map[v.lower()] = v
+
+    rows = []
+    for sup_key, sup_display in display_map.items():
+        lw_count = int(((lw_sup_ci == sup_key) & lw_delay).sum())
+        cw_count = int(((cw_sup_ci == sup_key) & cw_delay).sum())
+        delta    = cw_count - lw_count
+        trend    = '✅ Improved' if cw_count < lw_count else '🔴 Worsened'
+        rows.append({
+            'supplier':  sup_display,
+            'lw_delays': lw_count,
+            'cw_delays': cw_count,
+            'delta':     delta,
+            'trend':     trend,
+        })
+
+    rows.sort(key=lambda r: -r['delta'])
+    return rows
 
 
 def compute_otd_projections(cw_df: pd.DataFrame) -> dict:

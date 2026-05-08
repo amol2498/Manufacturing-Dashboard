@@ -1,0 +1,160 @@
+
+Recreate Supplier Delay Trend Dashboard/Section as below:
+Read data from CW_Data worksheet range C25 to G32
+
+### Dashboard Overview
+
+**Purpose:** This dashboard provides a **Week-on-Week (WoW) comparison** of supplier delivery delays, enabling supply chain teams to quickly identify which suppliers are improving or worsening in their on-time delivery performance.
+
+---
+
+### Data Structure
+
+| Column | Header | Description |
+|--------|--------|-------------|
+| **C** | **Supplier** | Static list of supplier names (text values) |
+| **D** | **LW Delays** | Count of delayed orders from **Last Week** data |
+| **E** | **CW Delays** | Count of delayed orders from **Current Week** data |
+| **F** | **Δ Change** | Difference between current week and last week delays |
+| **G** | **Trend** | Visual indicator showing improvement or deterioration |
+
+---
+
+### Current Data Snapshot
+
+| Supplier | LW Delays | CW Delays | Δ Change | Trend |
+|----------|-----------|-----------|----------|-------|
+| Indo-MIM | 5 | 6 | +1 | 🔴 Worsened |
+| JJG Aero | 38 | 37 | -1 | ✅ Improved |
+| Maini | 30 | 33 | +3 | 🔴 Worsened |
+| PMI | 5 | 0 | -5 | ✅ Improved |
+| Kun Aerospace | 15 | 0 | -15 | ✅ Improved |
+| Rapid | 11 | 0 | -11 | ✅ Improved |
+| SFO | 5 | 0 | -5 | ✅ Improved |
+
+---
+
+### Formula Logic Explained (Plain English)
+
+#### **Column D: Last Week Delays**
+```
+IFERROR(COUNTIFS(LW_Data!$B$4:$B$3000, [Supplier Name], LW_Data!$J$4:$J$3000, "Delay"), 0)
+```
+
+**In Plain English:**
+> "Count all rows in the **Last Week Data** where:
+> 1. The **Supplier column (B)** matches the supplier name in this row, AND
+> 2. The **On-Time/Delay column (J)** equals 'Delay'
+> 
+> If any error occurs, return 0 instead."
+
+---
+
+#### **Column E: Current Week Delays**
+```
+IFERROR(COUNTIFS(CW_Data!$B$4:$B$3000, [Supplier Name], CW_Data!$J$4:$J$3000, "Delay"), 0)
+```
+
+**In Plain English:**
+> "Count all rows in the **Current Week Data** where:
+> 1. The **Supplier column (B)** matches the supplier name in this row, AND
+> 2. The **On-Time/Delay column (J)** equals 'Delay'
+> 
+> If any error occurs, return 0 instead."
+
+---
+
+#### **Column F: Delta Change (Δ)**
+```
+IFERROR(E[row] - D[row], 0)
+```
+
+**In Plain English:**
+> "Calculate the **difference** between Current Week Delays and Last Week Delays.
+> - **Positive number** = More delays this week (worse)
+> - **Negative number** = Fewer delays this week (better)
+> - **Zero** = No change
+> 
+> If any error occurs, return 0."
+
+---
+
+#### **Column G: Trend Indicator**
+```
+IF(E[row] < D[row], "✅ Improved", "🔴 Worsened")
+```
+
+**In Plain English:**
+> "Compare Current Week Delays to Last Week Delays:
+> - If **CW Delays < LW Delays** → Display **'✅ Improved'** (supplier got better)
+> - Otherwise → Display **'🔴 Worsened'** (supplier stayed same or got worse)"
+
+---
+
+### Source Data Requirements
+
+Your web application needs **two data sources**:
+
+| Data Source | Description | Key Columns Used |
+|-------------|-------------|------------------|
+| **LW_Data** | Last Week's delivery tracking data | Column B: Supplier name, Column J: On-Time/Delay status |
+| **CW_Data** | Current Week's delivery tracking data | Column B: Supplier name, Column J: On-Time/Delay status |
+
+**Column J Values:** "On time" or "Delay"
+
+---
+
+### Web Implementation Pseudocode
+
+```javascript
+// For each supplier:
+function calculateSupplierMetrics(supplierName, lwData, cwData) {
+    // Count LW delays
+    const lwDelays = lwData.filter(row => 
+        row.supplier === supplierName && 
+        row.onTimeDelay === "Delay"
+    ).length;
+    
+    // Count CW delays  
+    const cwDelays = cwData.filter(row => 
+        row.supplier === supplierName && 
+        row.onTimeDelay === "Delay"
+    ).length;
+    
+    // Calculate delta
+    const deltaChange = cwDelays - lwDelays;
+    
+    // Determine trend
+    const trend = cwDelays < lwDelays ? "✅ Improved" : "🔴 Worsened";
+    
+    return { supplierName, lwDelays, cwDelays, deltaChange, trend };
+}
+```
+
+---
+
+### Visual Design Specifications
+
+| Element | Styling Recommendation |
+|---------|------------------------|
+| **Section Header** | Dark background with emoji (📊), white bold text |
+| **Table Header Row** | Light gray background, bold text, centered |
+| **Trend: Improved** | Green text or green badge with ✅ |
+| **Trend: Worsened** | Red text or red badge with 🔴 |
+| **Negative Δ (improvement)** | Green color or prefix with minus sign |
+| **Positive Δ (deterioration)** | Red color or prefix with plus sign |
+| **Zero Δ** | Neutral gray color |
+
+---
+
+### Business Rules Summary
+
+1. **Data freshness:** Both LW_Data and CW_Data must be refreshed weekly
+2. **Supplier list:** Should be dynamically populated from unique suppliers in the data
+3. **Error handling:** All calculations should return 0 if data is missing or errors occur
+4. **Trend logic:** Equal delays counts as "Worsened" (no improvement = concern)
+5. **Sorting suggestion:** Consider sorting by Δ Change (worst performers at top)
+
+---
+
+This prompt provides all the information needed to recreate this dashboard component on a web platform while maintaining the same calculation logic and visual presentation!

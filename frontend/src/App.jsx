@@ -8,7 +8,6 @@ import Tab2 from './components/Tab2'
 import Tab4 from './components/Tab4'
 import Tab5 from './components/Tab5'
 import RecordsPage from './components/RecordsPage'
-import WowDashboard from './components/WowDashboard'
 import OTDRiskDashboard from './components/OTDRiskDashboard'
 import DetailsDashboard from './components/DetailsDashboard'
 import WowComparisonDashboard from './components/WowComparisonDashboard'
@@ -90,8 +89,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/records" element={<RecordsPage />} />
-      <Route path="/wow-dashboard" element={<WowDashboard />} />
-      <Route path="/otd-risk-dashboard" element={<OTDRiskDashboard />} />
+<Route path="/otd-risk-dashboard" element={<OTDRiskDashboard />} />
       <Route path="/details" element={<DetailsDashboard />} />
       <Route path="/wow-comparison" element={<WowComparisonDashboard />} />
       <Route path="/otd-projections-dashboard" element={<OTDProjectionsDashboard />} />

@@ -193,41 +193,47 @@ export default function WowComparisonDashboard() {
               </div>
 
               {/* Section 2: Supplier Delay Trend */}
-              <div className="section">
-                <h2 className="section-title">Supplier Delay Trend</h2>
-                <div className="details-table-wrap">
-                  <table className="mbm-table">
-                    <thead>
-                      <tr>
-                        <th className="mbm-th mbm-th-metric">Supplier</th>
-                        <th className="mbm-th" colSpan={2}>Last Week Formula</th>
-                        <th className="mbm-th">LW Delays</th>
-                        <th className="mbm-th">CW Delays</th>
-                        <th className="mbm-th">Δ Change</th>
-                        <th className="mbm-th">Trend</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.supplier_rows.map(s => {
-                        const d = getDelta(s.lw, s.cw, 'supplier')
-                        const sig = getSignal(s.lw, s.cw, 'supplier')
-                        return (
-                          <tr key={s.name} className="mbm-row">
-                            <td className="mbm-td mbm-metric">{s.name}</td>
-                            <td className="mbm-td mbm-formula-val" colSpan={2}>{s.lw}</td>
-                            <td className="mbm-td mbm-lw">{s.lw}</td>
-                            <td className="mbm-td mbm-cw">{s.cw}</td>
-                            <td className={`mbm-td mbm-delta ${d.good === true ? 'mbm-delta-good' : d.good === false ? 'mbm-delta-bad' : 'mbm-delta-neutral'}`}>
-                              {d.text}
-                            </td>
-                            <td className={`mbm-td mbm-signal-cell ${sig.cls}`}>{sig.text}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+              {data.supplier_delay_trend?.length > 0 && (
+                <div className="section">
+                  <div className="sdt-banner">
+                    <span>📊</span>
+                    SUPPLIER DELAY TREND · Week-on-Week Comparison · Sorted by Δ Change (worst first)
+                  </div>
+                  <div className="details-table-wrap">
+                    <table className="sdt-table">
+                      <thead>
+                        <tr>
+                          <th className="sdt-th sdt-th-supplier">Supplier</th>
+                          <th className="sdt-th">LW Delays</th>
+                          <th className="sdt-th">CW Delays</th>
+                          <th className="sdt-th">Δ Change</th>
+                          <th className="sdt-th">Trend</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.supplier_delay_trend.map((row, i) => {
+                          const deltaSign = row.delta > 0 ? '+' : ''
+                          const deltaCls  = row.delta < 0 ? 'sdt-delta-good'
+                                          : row.delta > 0 ? 'sdt-delta-bad'
+                                          : 'sdt-delta-neutral'
+                          const trendCls  = row.trend.startsWith('✅') ? 'sdt-trend-improved' : 'sdt-trend-worsened'
+                          return (
+                            <tr key={row.supplier} className={`sdt-row${i % 2 === 1 ? ' sdt-row-alt' : ''}`}>
+                              <td className="sdt-td sdt-supplier">{row.supplier}</td>
+                              <td className="sdt-td sdt-num">{row.lw_delays}</td>
+                              <td className="sdt-td sdt-num">{row.cw_delays}</td>
+                              <td className={`sdt-td sdt-num ${deltaCls}`}>
+                                {deltaSign}{row.delta}
+                              </td>
+                              <td className={`sdt-td ${trendCls}`}>{row.trend}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="section">

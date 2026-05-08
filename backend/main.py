@@ -203,7 +203,9 @@ async def upload_wow_comparison(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         cw_df, lw_df = data.parse_otd_risk_sheets(contents)
-        return data.compute_wow_comparison(cw_df, lw_df)
+        result = data.compute_wow_comparison(cw_df, lw_df)
+        result['supplier_delay_trend'] = data.compute_supplier_delay_trend(cw_df, lw_df)
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
