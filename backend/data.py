@@ -633,11 +633,15 @@ def compute_summary_stats(cw_df: pd.DataFrame, lw_df: pd.DataFrame) -> dict:
 
 def _sheet_to_df(ws) -> pd.DataFrame:
     """Read an openpyxl worksheet into a DataFrame.
-    Always uses row index 2 (Excel row 3) as the header — identical to pd.read_excel(header=2).
-    Only data rows (index 3+) have blank rows filtered out, so all suppliers including late
-    rows like PMI at row 986 are captured regardless of the file's declared used-range.
+    Iterates up to MAX_ROWS explicitly, ignoring the file's declared used-range metadata
+    which may stop short of actual data (e.g. PMI at row 986 when metadata says row 985).
+    Row index 2 (Excel row 3) is always the header; blank data rows are skipped.
     """
-    all_rows = list(ws.iter_rows(values_only=True))
+    MAX_ROWS = 10000
+    all_rows = list(ws.iter_rows(min_row=1, max_row=MAX_ROWS, values_only=True))
+    # Trim trailing all-None rows
+    while all_rows and not any(v is not None for v in all_rows[-1]):
+        all_rows.pop()
     if len(all_rows) < 3:
         return pd.DataFrame()
     header = [
@@ -1172,11 +1176,11 @@ def compute_otd_projections(cw_df: pd.DataFrame) -> dict:
 
         if total == 0:
             risk_label, risk_level = 'No Data', 'no_data'
-        elif otd_actual < 80:
+        elif otd_forecast < 80:
             risk_label, risk_level = '🔴 CRITICAL — <80% Act immediately', 'critical'
-        elif otd_actual < 90:
+        elif otd_forecast < 90:
             risk_label, risk_level = '🔴 Below 90% target — Expedite delays', 'warning'
-        elif otd_actual < 95:
+        elif otd_forecast < 95:
             risk_label, risk_level = '🟡 Below 95% target — Monitor closely', 'caution'
         else:
             risk_label, risk_level = '🟢 On Target ≥95%', 'good'
