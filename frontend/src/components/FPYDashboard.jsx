@@ -108,17 +108,102 @@ function FpyTable({ months, rows }) {
   )
 }
 
+// ── Monthly FPY Trend table ──────────────────────────────────────────────────────
+
+function TrendTable({ months, rows }) {
+  return (
+    <div className="table-container" style={{ overflowX: 'auto', marginTop: 28 }}>
+      <h2 className="section-title" style={{ marginBottom: 10 }}>
+        Monthly FPY Trend — Chart data (AVERAGEIFS formula per supplier per month)
+      </h2>
+      <table className="pivot-table otdr-table fpy-table">
+        <thead>
+          <tr>
+            <th className="fpy-th-supplier">Supplier</th>
+            {months.map(m => (
+              <th key={m} className="fpy-th-month">{m}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="fpy-row">
+              <td className="fpy-td-supplier">{row.supplier}</td>
+              {months.map(m => {
+                const v = row.data[m] ?? null
+                return (
+                  <td key={m} className="fpy-td" style={cellStyle(v)}>
+                    {v != null ? `${v}%` : ''}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+          {/* Target row */}
+          <tr className="fpy-row-target">
+            <td className="fpy-td-target-label">Target 90%</td>
+            {months.map(m => (
+              <td key={m} className="fpy-td-target">90%</td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── Plant-wise summary table ─────────────────────────────────────────────────────
+
+function PlantTable({ rows }) {
+  if (!rows.length) return null
+  return (
+    <div className="table-container" style={{ overflowX: 'auto', marginTop: 28 }}>
+      <h2 className="section-title" style={{ marginBottom: 10 }}>
+        Plant-wise FPY Summary — AVERAGEIFS from FPY Data · All months combined
+      </h2>
+      <table className="pivot-table otdr-table fpy-table">
+        <thead>
+          <tr>
+            <th className="fpy-th-supplier">Plant</th>
+            <th className="fpy-th-col fpy-th-ppap">PPAP Avg FPY</th>
+            <th className="fpy-th-col fpy-th-prod">Production Avg FPY</th>
+            <th className="fpy-th-col" style={{ background: '#1f3864', color: '#fff' }}>Overall Avg FPY</th>
+            <th className="fpy-th-col" style={{ background: '#2e4057', color: '#fff' }}>Total Records</th>
+            <th className="fpy-th-col" style={{ background: '#7b1f1f', color: '#fff' }}>Below 90% Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="fpy-row">
+              <td className="fpy-td-supplier">{row.plant}</td>
+              <td className="fpy-td" style={cellStyle(row.ppap_avg)}>{row.ppap_avg}%</td>
+              <td className="fpy-td" style={cellStyle(row.production_avg)}>{row.production_avg}%</td>
+              <td className="fpy-td fpy-td-overall" style={cellStyle(row.overall_avg)}>
+                <strong>{row.overall_avg}%</strong>
+              </td>
+              <td className="fpy-td">{row.total_records}</td>
+              <td className="fpy-td fpy-td-below90">{row.below_90_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────────
 
 export default function FPYDashboard() {
   const [status, setStatus]       = useState('idle')
   const [fileName, setFileName]   = useState('')
   const [errorMsg, setErrorMsg]   = useState('')
-  const [summary, setSummary]     = useState(null)
-  const [months, setMonths]       = useState([])
-  const [allRows, setAllRows]     = useState([])
-  const [suppliers, setSuppliers] = useState([])
-  const [selected, setSelected]   = useState('')
+  const [summary, setSummary]       = useState(null)
+  const [months, setMonths]         = useState([])
+  const [allRows, setAllRows]           = useState([])
+  const [allTrendRows, setAllTrendRows] = useState([])
+  const [plantRows, setPlantRows]       = useState([])
+  const [suppliers, setSuppliers]       = useState([])
+  const [selected, setSelected]     = useState('')
   const fileRef = useRef(null)
 
   const handleFileChange = async (e) => {
@@ -131,6 +216,8 @@ export default function FPYDashboard() {
       setSummary(result.summary)
       setMonths(result.months)
       setAllRows(result.rows)
+      setAllTrendRows(result.trend_rows ?? [])
+      setPlantRows(result.plant_rows ?? [])
       setSuppliers(result.suppliers)
       setSelected('')
       setFileName(file.name)
@@ -143,9 +230,8 @@ export default function FPYDashboard() {
     }
   }
 
-  const visibleRows = selected
-    ? allRows.filter(r => r.supplier === selected)
-    : allRows
+  const visibleRows      = selected ? allRows.filter(r => r.supplier === selected)      : allRows
+  const visibleTrendRows = selected ? allTrendRows.filter(r => r.supplier === selected) : allTrendRows
 
   return (
     <div className="app">
@@ -223,9 +309,13 @@ export default function FPYDashboard() {
                 </div>
               )}
 
-              {/* FPY table */}
+              {/* FPY table + trend table */}
               <div className="section">
                 <FpyTable months={months} rows={visibleRows} />
+                {allTrendRows.length > 0 && (
+                  <TrendTable months={months} rows={visibleTrendRows} />
+                )}
+                <PlantTable rows={plantRows} />
               </div>
             </>
           ) : (

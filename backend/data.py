@@ -1514,12 +1514,18 @@ def compute_stage_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame,
 
 FPY_SUPPLIERS = [
     "Indo-MIM", "JK Maini", "JJG-Aero", "Wipro",
-    "SFO", "Kun_Aero", "PMI", "Rapid", "Team Metal", "CCS",
+    "SFO", "Kun-Aero", "PMI", "Rapid", "Team Metal", "CCS",
 ]
+
+
+def _fpy_norm(s: str) -> str:
+    """Normalise supplier name for matching: lowercase, hyphens/underscores → space."""
+    return s.lower().replace('-', ' ').replace('_', ' ')
 
 _FPY_COL_DATE     = 0   # A
 _FPY_COL_SUPPLIER = 1   # B
 _FPY_COL_STAGE    = 2   # C
+_FPY_COL_PLANT    = 3   # D
 _FPY_COL_FPY      = 9   # J  (decimal: 0.988 = 98.8%)
 
 
@@ -1555,7 +1561,7 @@ def compute_fpy_table(df: pd.DataFrame) -> dict:
 
     rows = []
     for supplier in FPY_SUPPLIERS:
-        sup_mask = sup_s.str.lower() == supplier.lower()
+        sup_mask = sup_s.apply(_fpy_norm) == _fpy_norm(supplier)
         row_data = {}
         for m, dt in month_map.items():
             date_mask = dates == dt
@@ -1571,14 +1577,75 @@ def compute_fpy_table(df: pd.DataFrame) -> dict:
             }
         rows.append({"supplier": supplier, "data": row_data})
 
+    trend_rows = _compute_fpy_trend_rows(sup_s, dates, fpy_s, month_map, months)
+    plant_rows = _compute_fpy_plant_summary(df)
+
     return {
-        "months":    months,
-        "suppliers": FPY_SUPPLIERS,
-        "rows":      rows,
+        "months":      months,
+        "suppliers":   FPY_SUPPLIERS,
+        "rows":        rows,
+        "trend_rows":  trend_rows,
+        "plant_rows":  plant_rows,
         "summary": {
-            "overall_avg":   overall_avg,
-            "ppap_avg":      ppap_avg,
+            "overall_avg":    overall_avg,
+            "ppap_avg":       ppap_avg,
             "production_avg": prod_avg,
-            "total_records": total_records,
+            "total_records":  total_records,
         },
     }
+
+
+def _compute_fpy_plant_summary(df: pd.DataFrame) -> list:
+    """Plant-wise FPY summary — AVERAGEIFS from column D (plant), all months combined.
+
+    Columns:
+      plant          – unique value from col D
+      ppap_avg       – avg J where plant matches, stage=PPAP, J>0  (×100)
+      production_avg – avg J where plant matches, stage=Production, J>0  (×100)
+      overall_avg    – avg J where plant matches, J>0  (×100)
+      total_records  – count of rows where plant matches
+      below_90_count – count of rows where plant matches, J>0, J<0.9
+    """
+    plant_s = df.iloc[:, _FPY_COL_PLANT].astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+    stage_s = df.iloc[:, _FPY_COL_STAGE].astype(str).str.strip().str.lower()
+    fpy_s   = pd.to_numeric(df.iloc[:, _FPY_COL_FPY], errors='coerce').fillna(0)
+
+    plants = sorted({v for v in plant_s.unique() if v and v.lower() not in ('', 'nan', 'none')})
+
+    rows = []
+    for plant in plants:
+        # Substring match (mirrors Excel "*plant*" wildcard)
+        pmask = plant_s.str.contains(plant, case=False, regex=False, na=False)
+
+        ppap_vals = fpy_s[pmask & (stage_s == 'ppap') & (fpy_s > 0)]
+        prod_vals = fpy_s[pmask & (stage_s == 'production') & (fpy_s > 0)]
+        all_vals  = fpy_s[pmask & (fpy_s > 0)]
+
+        rows.append({
+            "plant":          plant,
+            "ppap_avg":       round(float(ppap_vals.mean()) * 100, 1) if len(ppap_vals) > 0 else 0.0,
+            "production_avg": round(float(prod_vals.mean()) * 100, 1) if len(prod_vals) > 0 else 0.0,
+            "overall_avg":    round(float(all_vals.mean())  * 100, 1) if len(all_vals)  > 0 else 0.0,
+            "total_records":  int(pmask.sum()),
+            "below_90_count": int((pmask & (fpy_s > 0) & (fpy_s < 0.9)).sum()),
+        })
+    return rows
+
+
+def _compute_fpy_trend_rows(sup_s, dates, fpy_s, month_map, months):
+    """Monthly FPY trend — combined across all stages, no PPAP/Production split.
+
+    Formula equivalent:
+      value = SUM(J where supplier & date & J>0) / COUNT(J where supplier & date & J>0)
+    Returns None when no qualifying rows exist for that cell.
+    """
+    rows = []
+    for supplier in FPY_SUPPLIERS:
+        sup_mask = sup_s.apply(_fpy_norm) == _fpy_norm(supplier)
+        row_data = {}
+        for m, dt in month_map.items():
+            mask = sup_mask & (dates == dt) & (fpy_s > 0)
+            vals = fpy_s[mask]
+            row_data[m] = round(float(vals.mean()) * 100, 1) if len(vals) > 0 else None
+        rows.append({"supplier": supplier, "data": row_data})
+    return rows
