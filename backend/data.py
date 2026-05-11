@@ -155,20 +155,49 @@ def apply_filters(df, stages, ontime_delay, delay_category, months, supplier_nam
 
 
 def get_filter_options(session_id: str):
-    df = get_df(session_id)
-    if df.empty or "Supplier Name" not in df.columns:
-        return {"supplier_names": [], "stages": [], "ontime_delay": [], "delay_category": [], "months": []}
-    month_df = (
-        df.dropna(subset=["Month"])
-        .drop_duplicates(subset=["Month", "Month_Sort"])
-        .sort_values("Month_Sort")
-    )
+    df       = get_df(session_id)
+    tab3_cur = get_tab3_current_df(session_id)
+    tab3_has = tab3_cur is not None and not tab3_cur.empty
+
+    # Merge supplier names from main data and Tab3 current upload
+    suppliers = set()
+    if not df.empty and "Supplier Name" in df.columns:
+        suppliers.update(df["Supplier Name"].dropna().unique().tolist())
+    if tab3_has and "Supplier Name" in tab3_cur.columns:
+        suppliers.update(tab3_cur["Supplier Name"].dropna().unique().tolist())
+
+    # Other filter dimensions come from whichever source has data
+    base_df = df if (not df.empty and "Supplier Name" in df.columns) else (tab3_cur if tab3_has else None)
+    if base_df is None:
+        return {"supplier_names": sorted(suppliers), "stages": [], "ontime_delay": [], "delay_category": [], "months": []}
+
+    stages        = sorted(base_df["Stages"].dropna().unique().tolist())        if "Stages"         in base_df.columns else []
+    ontime_delay  = sorted(base_df["Ontime/Delay"].dropna().unique().tolist())  if "Ontime/Delay"   in base_df.columns else []
+    delay_cat     = sorted(base_df["Delay Category"].dropna().unique().tolist()) if "Delay Category" in base_df.columns else []
+
+    if not df.empty and "Month" in df.columns and "Month_Sort" in df.columns:
+        month_df = (
+            df.dropna(subset=["Month"])
+            .drop_duplicates(subset=["Month", "Month_Sort"])
+            .sort_values("Month_Sort")
+        )
+        months = month_df["Month"].tolist()
+    elif tab3_has and "Month" in tab3_cur.columns and "Month_Sort" in tab3_cur.columns:
+        month_df = (
+            tab3_cur.dropna(subset=["Month"])
+            .drop_duplicates(subset=["Month", "Month_Sort"])
+            .sort_values("Month_Sort")
+        )
+        months = month_df["Month"].tolist()
+    else:
+        months = []
+
     return {
-        "supplier_names": sorted(df["Supplier Name"].dropna().unique().tolist()),
-        "stages": sorted(df["Stages"].dropna().unique().tolist()),
-        "ontime_delay": sorted(df["Ontime/Delay"].dropna().unique().tolist()),
-        "delay_category": sorted(df["Delay Category"].dropna().unique().tolist()),
-        "months": month_df["Month"].tolist(),
+        "supplier_names": sorted(suppliers),
+        "stages":         stages,
+        "ontime_delay":   ontime_delay,
+        "delay_category": delay_cat,
+        "months":         months,
     }
 
 
@@ -1238,6 +1267,52 @@ def compute_otd_projections(cw_df: pd.DataFrame) -> dict:
     for r in at_risk_rows:
         del r['_risk_sort']
 
+    # ── Per-supplier monthly summaries ───────────────────────────────────────────
+    supplier_list = sorted(
+        [s for s in supplier_col.unique() if s and s.lower() not in ('nan', 'none', '')]
+    )
+
+    def _monthly_rows_for_mask(sup_mask):
+        rows = []
+        for month in target_months:
+            month_mask = month_col.str.lower() == month.lower()
+            combined   = sup_mask & month_mask
+            on_time    = int((combined & (j_col == 'on time')).sum())
+            delayed    = int((combined & (j_col == 'delay')).sum())
+            total      = on_time + delayed
+            if total > 0:
+                otd_actual   = round(on_time / total * 100, 1)
+                otd_forecast = round(otd_actual * 1.02, 1)
+            else:
+                otd_actual   = 0.0
+                otd_forecast = 95.0
+            if total == 0:
+                risk_label, risk_level = 'No Data', 'no_data'
+            elif otd_forecast < 80:
+                risk_label, risk_level = '🔴 CRITICAL — <80% Act immediately', 'critical'
+            elif otd_forecast < 90:
+                risk_label, risk_level = '🔴 Below 90% target — Expedite delays', 'warning'
+            elif otd_forecast < 95:
+                risk_label, risk_level = '🟡 Below 95% target — Monitor closely', 'caution'
+            else:
+                risk_label, risk_level = '🟢 On Target ≥95%', 'good'
+            rows.append({
+                'month':        month,
+                'total_lines':  total,
+                'on_time':      on_time,
+                'delayed':      delayed,
+                'otd_actual':   otd_actual,
+                'otd_forecast': otd_forecast,
+                'risk_label':   risk_label,
+                'risk_level':   risk_level,
+            })
+        return rows
+
+    supplier_monthly_summary = {
+        sup: _monthly_rows_for_mask(supplier_col == sup)
+        for sup in supplier_list
+    }
+
     # Dynamic date-range label (e.g. "May–Oct 2026")
     if len(target_months) >= 2:
         fp, lp = target_months[0].split(), target_months[-1].split()
@@ -1254,10 +1329,12 @@ def compute_otd_projections(cw_df: pd.DataFrame) -> dict:
         date_range_label = ''
 
     return {
-        'monthly_summary':  monthly_summary,
-        'at_risk_pipeline': at_risk_rows,
-        'date_range_label': date_range_label,
-        'total_at_risk':    len(at_risk_rows),
+        'monthly_summary':          monthly_summary,
+        'supplier_monthly_summary': supplier_monthly_summary,
+        'supplier_list':            supplier_list,
+        'at_risk_pipeline':         at_risk_rows,
+        'date_range_label':         date_range_label,
+        'total_at_risk':            len(at_risk_rows),
     }
 
 
