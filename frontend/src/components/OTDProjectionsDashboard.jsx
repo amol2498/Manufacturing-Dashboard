@@ -236,7 +236,6 @@ function matchesDaysFilter(days, raw) {
 
 const EMPTY_PIPELINE_FILTERS = {
   item_number:    '',
-  supplier:       [],
   site:           [],
   due_date:       '',
   days_until_due: '',
@@ -249,29 +248,26 @@ function AtRiskPipeline({ rows }) {
 
   const setFilter = (key, val) => setFilters(f => ({ ...f, [key]: val }))
 
-  const uniqueSuppliers = useMemo(() => [...new Set(rows.map(r => r.supplier).filter(Boolean))].sort(), [rows])
-  const uniqueSites     = useMemo(() => [...new Set(rows.map(r => r.site).filter(Boolean))].sort(), [rows])
-  const uniqueStages    = useMemo(() => [...new Set(rows.map(r => r.stage).filter(Boolean))].sort(), [rows])
+  const uniqueSites  = useMemo(() => [...new Set(rows.map(r => r.site).filter(Boolean))].sort(), [rows])
+  const uniqueStages = useMemo(() => [...new Set(rows.map(r => r.stage).filter(Boolean))].sort(), [rows])
 
   const filtered = useMemo(() => rows.filter(r => {
     const ci = (a, b) => a.toLowerCase().includes(b.toLowerCase())
-    if (filters.item_number           && !ci(r.item_number || '', filters.item_number))           return false
-    if (filters.supplier.length       && !filters.supplier.includes(r.supplier))                  return false
-    if (filters.site.length           && !filters.site.includes(r.site))                          return false
-    if (filters.due_date              && !matchesDueDateFilter(r.due_date, filters.due_date))       return false
-    if (filters.days_until_due        && !matchesDaysFilter(r.days_until_due, filters.days_until_due)) return false
-    if (filters.stage.length          && !filters.stage.includes(r.stage))                        return false
-    if (filters.risk_level.length     && !filters.risk_level.includes(r.risk_level))              return false
+    if (filters.item_number       && !ci(r.item_number || '', filters.item_number))                   return false
+    if (filters.site.length       && !filters.site.includes(r.site))                                  return false
+    if (filters.due_date          && !matchesDueDateFilter(r.due_date, filters.due_date))              return false
+    if (filters.days_until_due    && !matchesDaysFilter(r.days_until_due, filters.days_until_due))    return false
+    if (filters.stage.length      && !filters.stage.includes(r.stage))                                return false
+    if (filters.risk_level.length && !filters.risk_level.includes(r.risk_level))                      return false
     return true
   }), [rows, filters])
 
   const hasActiveFilter =
-    filters.item_number !== ''     ||
-    filters.supplier.length > 0    ||
-    filters.site.length > 0        ||
-    filters.due_date !== ''        ||
-    filters.days_until_due !== ''  ||
-    filters.stage.length > 0       ||
+    filters.item_number !== ''    ||
+    filters.site.length > 0       ||
+    filters.due_date !== ''       ||
+    filters.days_until_due !== '' ||
+    filters.stage.length > 0      ||
     filters.risk_level.length > 0
 
   if (!rows.length) {
@@ -299,7 +295,6 @@ function AtRiskPipeline({ rows }) {
           <thead>
             <tr>
               <th className="otdr-th otdr-th-supplier">Item #</th>
-              <th className="otdr-th otdr-th-supplier">Supplier</th>
               <th className="otdr-th otdr-th-supplier">Site</th>
               <th className="otdr-th">Due Date</th>
               <th className="otdr-th">Days Until Due</th>
@@ -313,13 +308,6 @@ function AtRiskPipeline({ rows }) {
                   placeholder="Search…"
                   value={filters.item_number}
                   onChange={e => setFilter('item_number', e.target.value)}
-                />
-              </th>
-              <th className="otdp-filter-th">
-                <MultiSelectDropdown
-                  options={uniqueSuppliers}
-                  value={filters.supplier}
-                  onChange={v => setFilter('supplier', v)}
                 />
               </th>
               <th className="otdp-filter-th">
@@ -365,7 +353,6 @@ function AtRiskPipeline({ rows }) {
             {filtered.length > 0 ? filtered.map((row, i) => (
               <tr key={i} className="otdr-row">
                 <td className="otdr-td otdr-supplier">{row.item_number || '—'}</td>
-                <td className="otdr-td otdr-supplier">{row.supplier || '—'}</td>
                 <td className="otdr-td otdr-supplier">{row.site || '—'}</td>
                 <td className="otdr-td">{row.due_date || '—'}</td>
                 <td className="otdr-td" style={{ fontWeight: 700, color: '#1e3a5f' }}>
@@ -378,7 +365,7 @@ function AtRiskPipeline({ rows }) {
               </tr>
             )) : (
               <tr>
-                <td colSpan={7} className="otdr-td" style={{ textAlign: 'center', color: '#888', padding: '20px' }}>
+                <td colSpan={6} className="otdr-td" style={{ textAlign: 'center', color: '#888', padding: '20px' }}>
                   No items match the current filters.
                 </td>
               </tr>
@@ -414,13 +401,15 @@ function RiskLegend() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function OTDProjectionsDashboard() {
-  const [status, setStatus]                 = useState('idle')
-  const [fileName, setFileName]             = useState('')
-  const [errorMsg, setErrorMsg]             = useState('')
-  const [monthlySummary, setMonthlySummary] = useState([])
-  const [atRiskPipeline, setAtRiskPipeline] = useState([])
-  const [dateRangeLabel, setDateRangeLabel] = useState('')
-  const [totalAtRisk, setTotalAtRisk]       = useState(0)
+  const [status, setStatus]                               = useState('idle')
+  const [fileName, setFileName]                           = useState('')
+  const [errorMsg, setErrorMsg]                           = useState('')
+  const [monthlySummary, setMonthlySummary]               = useState([])
+  const [supplierMonthlySummary, setSupplierMonthlySummary] = useState({})
+  const [supplierList, setSupplierList]                   = useState([])
+  const [atRiskPipeline, setAtRiskPipeline]               = useState([])
+  const [dateRangeLabel, setDateRangeLabel]               = useState('')
+  const [selectedSupplier, setSelectedSupplier]           = useState('')
   const fileRef = useRef(null)
 
   const handleFileChange = async (e) => {
@@ -428,12 +417,14 @@ export default function OTDProjectionsDashboard() {
     if (!file) return
     setStatus('loading')
     setErrorMsg('')
+    setSelectedSupplier('')
     try {
       const result = await uploadOtdProjections(file)
-      setMonthlySummary(result.monthly_summary   ?? [])
-      setAtRiskPipeline(result.at_risk_pipeline  ?? [])
-      setDateRangeLabel(result.date_range_label  ?? '')
-      setTotalAtRisk(result.total_at_risk         ?? 0)
+      setMonthlySummary(result.monthly_summary            ?? [])
+      setSupplierMonthlySummary(result.supplier_monthly_summary ?? {})
+      setSupplierList(result.supplier_list                ?? [])
+      setAtRiskPipeline(result.at_risk_pipeline           ?? [])
+      setDateRangeLabel(result.date_range_label           ?? '')
       setFileName(file.name)
       setStatus('success')
     } catch (err) {
@@ -443,6 +434,14 @@ export default function OTDProjectionsDashboard() {
       e.target.value = ''
     }
   }
+
+  const displayedMonthly = selectedSupplier
+    ? (supplierMonthlySummary[selectedSupplier] ?? [])
+    : monthlySummary
+
+  const displayedPipeline = selectedSupplier
+    ? atRiskPipeline.filter(r => r.supplier === selectedSupplier)
+    : atRiskPipeline
 
   return (
     <div className="app">
@@ -494,6 +493,37 @@ export default function OTDProjectionsDashboard() {
 
           {status === 'success' ? (
             <>
+              {/* Supplier filter */}
+              {supplierList.length > 0 && (
+                <div className="section" style={{ paddingBottom: 0 }}>
+                  <div className="otdp-supplier-filter-bar">
+                    <label className="otdp-supplier-filter-label" htmlFor="otdp-supplier-select">
+                      Supplier
+                    </label>
+                    <select
+                      id="otdp-supplier-select"
+                      className="otdp-supplier-select"
+                      value={selectedSupplier}
+                      onChange={e => setSelectedSupplier(e.target.value)}
+                    >
+                      <option value="">All Suppliers</option>
+                      {supplierList.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    {selectedSupplier && (
+                      <button
+                        className="otdp-clear-btn"
+                        onClick={() => setSelectedSupplier('')}
+                        type="button"
+                      >
+                        ✕ Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Monthly OTD Summary + Projection Chart */}
               <div className="section">
                 <div className="otdp-section-header">
@@ -504,10 +534,10 @@ export default function OTDProjectionsDashboard() {
                 </div>
                 <div className="otdp-summary-row">
                   <div className="otdp-summary-table">
-                    <MonthlyOtdSummary rows={monthlySummary} />
+                    <MonthlyOtdSummary rows={displayedMonthly} />
                   </div>
                   <div className="otdp-summary-chart">
-                    <OtdProjectionChart rows={monthlySummary} />
+                    <OtdProjectionChart rows={displayedMonthly} />
                   </div>
                 </div>
               </div>
@@ -517,12 +547,12 @@ export default function OTDProjectionsDashboard() {
                 <div className="otdp-section-header">
                   <h2 className="section-title" style={{ margin: 0 }}>At-Risk Pipeline</h2>
                   <span className="otdp-count-badge">
-                    <strong>{totalAtRisk}</strong> items at risk · due within 60 days in early stages
+                    <strong>{displayedPipeline.length}</strong> items at risk · due within 60 days in early stages
                   </span>
                 </div>
                 <RiskLegend />
                 <div style={{ marginTop: 12 }}>
-                  <AtRiskPipeline rows={atRiskPipeline} />
+                  <AtRiskPipeline rows={displayedPipeline} />
                 </div>
               </div>
             </>
