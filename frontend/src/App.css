@@ -2056,3 +2056,23 @@ body {
   font-weight: 600;
   font-size: 12px;
 }
+.fpy-td-overall { font-weight: 800 !important; }
+.fpy-td-below90 { font-weight: 700; color: #c00000; }
+
+.fpy-td-target-label {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c00000;
+  background: #fff0f0;
+  border: 1px solid #e0e0e0;
+}
+.fpy-td-target {
+  text-align: center;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c00000;
+  background: #fff0f0;
+  border: 1px solid #e0e0e0;
+}
