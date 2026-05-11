@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { label: 'Stage Comparison', path: '/stage-comparison'},
   {label : 'FPY Dashboard', path: './fpy-dashboard'},
   { label: 'Details', path: '/details' },
-
+  { label: 'SPC Dashboard', path: '/spc-dashboard' },
 ]
 
 export default function SiteHeader({ children }) {

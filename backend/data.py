@@ -1338,6 +1338,188 @@ def compute_otd_projections(cw_df: pd.DataFrame) -> dict:
     }
 
 
+def parse_spc_data(file_bytes: bytes) -> dict:
+    """Parse the 'SPC Data' sheet from an Excel file and compute SPC dashboard data.
+
+    Expected column layout (A–J, 0-indexed):
+      0=Month, 1=Supplier, 2=Type (PPAP/Production), 3=Plant, 4=Part No,
+      5=UCL, 6=LCL, 7=Insp Method, 8=Cp, 9=Cpk
+    """
+    buf = io.BytesIO(file_bytes)
+    try:
+        df = pd.read_excel(
+            buf, sheet_name="SPC Data", header=0,
+            engine="openpyxl", engine_kwargs={"data_only": True},
+        )
+    except Exception as exc:
+        raise ValueError(f"Could not read 'SPC Data' sheet: {exc}")
+
+    df.columns = df.columns.astype(str).str.strip()
+    df = df.dropna(how="all")
+
+    cols = list(df.columns)
+    if len(cols) < 10:
+        raise ValueError(
+            f"'SPC Data' sheet must have at least 10 columns (A–J). Found {len(cols)}."
+        )
+
+    df = df.rename(columns={
+        cols[0]: "Month",
+        cols[1]: "Supplier",
+        cols[2]: "Type",
+        cols[3]: "Plant",
+        cols[4]: "Part_No",
+        cols[8]: "Cp",
+        cols[9]: "Cpk",
+    })
+
+    # Drop rows missing key fields
+    df = df.dropna(subset=["Supplier", "Type", "Month"])
+    df = df[df["Supplier"].astype(str).str.strip().ne("")]
+    df = df[df["Type"].astype(str).str.strip().ne("")]
+
+    # Normalise text fields
+    df["Supplier"] = df["Supplier"].astype(str).str.strip()
+    df["Type"] = df["Type"].astype(str).str.strip()
+    df["Part_No"] = df["Part_No"].astype(str).str.strip()
+    df["Plant"] = df["Plant"].astype(str).str.strip().replace({"nan": "Unknown", "": "Unknown"})
+    df["Plant"] = df["Plant"].fillna("Unknown")
+
+    # Parse month → first-of-month timestamp
+    df["Month"] = _parse_date_column(df["Month"])
+    df = df.dropna(subset=["Month"])
+    df["Month"] = df["Month"].dt.to_period("M").dt.to_timestamp()
+    df["MonthLabel"] = df["Month"].dt.strftime("%b %Y")
+
+    # Numeric Cp/Cpk
+    df["Cp"] = pd.to_numeric(df["Cp"], errors="coerce")
+    df["Cpk"] = pd.to_numeric(df["Cpk"], errors="coerce")
+
+    if df.empty:
+        return {"kpis": {}, "months": [], "suppliers": [], "grid": [], "overall": {}, "records": []}
+
+    # ── Months (sorted chronologically) ───────────────────────────────────────────
+    months_sorted = sorted(df["Month"].unique())
+    month_labels = [m.strftime("%b %Y") for m in months_sorted]
+
+    # ── Suppliers (order of first appearance) ─────────────────────────────────────
+    suppliers = list(dict.fromkeys(df["Supplier"].tolist()))
+
+    # ── KPI cards ─────────────────────────────────────────────────────────────────
+    def _safe(v):
+        return round(float(v), 4) if pd.notna(v) else None
+
+    kpis = {
+        "avg_cpk":      _safe(df["Cpk"].mean()),
+        "avg_cp":       _safe(df["Cp"].mean()),
+        "min_cpk":      _safe(df["Cpk"].min()),
+        "record_count": int(len(df)),
+    }
+
+    # ── Grid helper ───────────────────────────────────────────────────────────────
+    def _cell(sub, month_ts):
+        m_sub = sub[sub["Month"] == month_ts]
+        if m_sub.empty:
+            return None
+        cp_vals  = m_sub["Cp"].dropna()
+        cpk_vals = m_sub["Cpk"].dropna()
+        return {
+            "avg_cp":  round(float(cp_vals.mean()),  2) if not cp_vals.empty  else None,
+            "avg_cpk": round(float(cpk_vals.mean()), 2) if not cpk_vals.empty else None,
+            "count":   int(len(m_sub)),
+        }
+
+    # ── Per-supplier × type × month grid ─────────────────────────────────────────
+    types = ["PPAP", "Production"]
+    grid = []
+    for supplier in suppliers:
+        for type_ in types:
+            sub = df[(df["Supplier"] == supplier) & (df["Type"] == type_)]
+            data = {ml: _cell(sub, mt) for mt, ml in zip(months_sorted, month_labels)}
+            grid.append({"supplier": supplier, "type": type_, "data": data})
+
+    # ── Overall averages (mean of all records per type+month, not mean-of-means) ──
+    overall = {}
+    for type_ in types:
+        sub = df[df["Type"] == type_]
+        overall[type_] = {ml: _cell(sub, mt) for mt, ml in zip(months_sorted, month_labels)}
+
+    # ── Trend data: supplier + month only (PPAP + Production combined) ───────────
+    cp_trends  = []
+    cpk_trends = []
+    for supplier in suppliers:
+        sup_df   = df[df["Supplier"] == supplier]
+        cp_data  = {}
+        cpk_data = {}
+        for mt, ml in zip(months_sorted, month_labels):
+            m_sub    = sup_df[sup_df["Month"] == mt]
+            cp_vals  = m_sub["Cp"].dropna()
+            cpk_vals = m_sub["Cpk"].dropna()
+            cp_data[ml]  = round(float(cp_vals.mean()),  3) if not cp_vals.empty  else None
+            cpk_data[ml] = round(float(cpk_vals.mean()), 3) if not cpk_vals.empty else None
+        cp_trends.append({"supplier": supplier, "data": cp_data})
+        cpk_trends.append({"supplier": supplier, "data": cpk_data})
+
+    # ── Plant-wise summary ────────────────────────────────────────────────────────
+    plant_summary = []
+    for plant in sorted(df["Plant"].unique()):
+        p_df = df[df["Plant"] == plant]
+        cp_vals  = p_df["Cp"].dropna()
+        cpk_vals = p_df["Cpk"].dropna()
+        avg_cp  = round(float(cp_vals.mean()),  2) if not cp_vals.empty  else None
+        avg_cpk = round(float(cpk_vals.mean()), 2) if not cpk_vals.empty else None
+        min_cpk = round(float(cpk_vals.min()),  2) if not cpk_vals.empty else None
+        max_cpk = round(float(cpk_vals.max()),  2) if not cpk_vals.empty else None
+        if avg_cpk is None:
+            status = "— No data"
+        elif avg_cpk >= 1.67:
+            status = "🟢 Excellent ≥1.67"
+        elif avg_cpk >= 1.33:
+            status = "✅ Capable ≥1.33"
+        else:
+            status = "🔴 Marginal <1.33"
+        plant_summary.append({
+            "plant":   plant,
+            "avg_cp":  avg_cp,
+            "avg_cpk": avg_cpk,
+            "min_cpk": min_cpk,
+            "max_cpk": max_cpk,
+            "records": int(len(p_df)),
+            "status":  status,
+        })
+
+    # ── Raw records for drill-down ─────────────────────────────────────────────────
+    records_df = df[["Supplier", "Type", "MonthLabel", "Part_No", "Plant", "Cp", "Cpk"]].copy()
+    records_df = records_df.rename(columns={"MonthLabel": "Month"})
+    records_df["Cp"]  = records_df["Cp"].where(records_df["Cp"].notna(),  None)
+    records_df["Cpk"] = records_df["Cpk"].where(records_df["Cpk"].notna(), None)
+
+    def _clean_rec(v):
+        if pd.isna(v) if not isinstance(v, str) else False:
+            return None
+        if isinstance(v, float):
+            return round(v, 4)
+        return v
+
+    raw_records = [
+        {k: _clean_rec(row[k]) for k in row}
+        for row in records_df.to_dict("records")
+    ]
+
+    return {
+        "kpis":          kpis,
+        "months":        month_labels,
+        "suppliers":     suppliers,
+        "grid":          grid,
+        "overall":       overall,
+        "records":       raw_records,
+        "cp_trends":     cp_trends,
+        "cpk_trends":    cpk_trends,
+        "plant_summary": plant_summary,
+        "target_cpk":    1.33,
+    }
+
+
 def get_records_data(session_id, month, stage, item_number=None, po_number=None):
     df = get_df(session_id)
     if df.empty or "Month" not in df.columns or "Stages" not in df.columns:

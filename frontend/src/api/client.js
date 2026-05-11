@@ -151,6 +151,12 @@ export async function fetchStageComparisonFilter(suppliers) {
   return apiFetch(`${BASE_URL}/stage-comparison-filter?${params.toString()}`)
 }
 
+export async function uploadSpc(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-spc`, { method: 'POST', body: formData })
+}
+
 export async function uploadOtdProjections(file) {
   const formData = new FormData()
   formData.append('file', file)

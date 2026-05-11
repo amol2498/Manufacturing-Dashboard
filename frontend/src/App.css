@@ -2076,3 +2076,584 @@ body {
   background: #fff0f0;
   border: 1px solid #e0e0e0;
 }
+
+/* ────────────────────────────────────────
+   SPC Dashboard
+──────────────────────────────────────── */
+
+/* KPI cards row */
+.spc-kpi-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.spc-kpi-card {
+  flex: 1 1 180px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.spc-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.spc-kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.spc-kpi-sub {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* Heatmap legend */
+.spc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.spc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.spc-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+
+/* Main grid */
+.spc-grid-scroll {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.spc-grid-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+.spc-grid-table th,
+.spc-grid-table td {
+  border: 1px solid #d1d5db;
+  padding: 0;
+}
+
+/* Header cells */
+.spc-th-supplier {
+  background: #1e3a5f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 8px 12px;
+  text-align: left;
+  min-width: 130px;
+}
+
+.spc-th-trend {
+  background: #1e3a5f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 8px 10px;
+  text-align: center;
+  min-width: 88px;
+}
+
+.spc-th-month {
+  background: #3730A3;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 10px;
+}
+
+.spc-th-cp {
+  background: #4F46E5;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 8px;
+  min-width: 62px;
+}
+
+.spc-th-cpk {
+  background: #7C3AED;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 8px;
+  min-width: 62px;
+}
+
+/* Supplier cell */
+.spc-supplier-cell {
+  background: #fff;
+  padding: 0 10px;
+  vertical-align: middle;
+  min-width: 130px;
+}
+
+.spc-supplier-name {
+  font-size: 12px;
+  font-weight: 700;
+  display: block;
+}
+
+/* Type tags inside supplier cell */
+.spc-type-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.spc-type-ppap {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.spc-type-prod {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+}
+
+.spc-supplier-cell-prod {
+  padding-left: 22px;
+}
+
+/* Trend sparkline cell */
+.spc-trend-cell {
+  background: #f9fafb;
+  padding: 2px 4px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.spc-sparkline-na {
+  color: #d1d5db;
+  font-size: 12px;
+}
+
+/* Data cells */
+.spc-cell {
+  text-align: center;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  transition: filter 0.1s;
+}
+
+.spc-cell-clickable {
+  cursor: pointer;
+}
+
+.spc-cell-clickable:hover {
+  filter: brightness(0.88);
+}
+
+.spc-cell-nodata {
+  background: #f9fafb;
+  color: #d1d5db;
+  font-weight: 400;
+}
+
+/* Data rows */
+.spc-row {
+  background: #eef2ff;
+}
+
+.spc-row td {
+  vertical-align: middle;
+}
+
+.spc-row-prod {
+  background: #f5f3ff;
+}
+
+/* Separator rows between supplier groups */
+.spc-sep-row td {
+  background: #f0f0f0;
+  height: 5px;
+  padding: 0;
+  border-left: none;
+  border-right: none;
+}
+
+/* Overall summary rows */
+.spc-overall-row {
+  background: #1e3a5f;
+}
+
+.spc-overall-label {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Below-grid helpers */
+.spc-row-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.spc-row-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.spc-row-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.spc-cell-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ── Drill-down modal ── */
+.spc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spc-modal {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+  width: 680px;
+  max-width: 95vw;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.spc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e3a5f;
+  color: #fff;
+  padding: 12px 18px;
+  font-size: 13px;
+  gap: 12px;
+}
+
+.spc-modal-count {
+  font-size: 11px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 10px;
+  padding: 2px 8px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.spc-modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.75;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.spc-modal-close:hover { opacity: 1; }
+
+.spc-modal-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.spc-modal-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+.spc-modal-table th {
+  background: #f0f4fb;
+  color: #1e3a5f;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid #dde1e7;
+  position: sticky;
+  top: 0;
+}
+
+.spc-modal-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f2f5;
+  color: #333;
+}
+
+.spc-modal-table tbody tr:hover { background: #f9fafb; }
+
+.spc-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* ── SPC grid + chart side-by-side row ── */
+.spc-grid-chart-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.spc-grid-chart-row .spc-grid-scroll {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.spc-overall-chart-wrap {
+  flex: 0 0 340px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 12px 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* ── SPC Trend Data Table ── */
+.spc-trend-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.spc-trend-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+.spc-trend-th-label {
+  background: #3730A3;
+  color: #fff;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 7px 14px;
+  text-align: left;
+  min-width: 160px;
+}
+
+.spc-trend-th-month {
+  background: #3730A3;
+  color: #fff;
+  font-weight: 700;
+  font-size: 10px;
+  text-align: center;
+  padding: 7px 12px;
+  min-width: 80px;
+}
+
+.spc-trend-row { background: #fff; }
+.spc-trend-row:hover { background: #f9fafb; }
+
+.spc-trend-row-label {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  color: #374151;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.spc-trend-cell {
+  text-align: center;
+  padding: 5px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  border-right: 1px solid #f0f0f0;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+
+.spc-trend-sep td {
+  background: #f0f2f5;
+  height: 6px;
+  padding: 0;
+  border: none;
+}
+
+.spc-trend-target-row { background: #FEE2E2; }
+.spc-trend-target-row .spc-trend-row-label { color: #DC2626; font-weight: 700; }
+.spc-trend-target-row .spc-trend-cell { color: #DC2626; font-weight: 700; }
+
+/* ── Plant-Wise Cp / Cpk Summary ────────────────────────────────────────────── */
+.spc-plant-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.spc-plant-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  background: #fff;
+}
+
+.spc-plant-th {
+  padding: 8px 12px;
+  background: #1e3a5f;
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  border-right: 1px solid rgba(255,255,255,0.12);
+}
+.spc-plant-th:last-child { border-right: none; }
+.spc-plant-th:hover { background: #2a4e7a; }
+.spc-plant-th-active { background: #163058 !important; }
+
+.spc-sort-arrow {
+  font-size: 10px;
+  opacity: 0.75;
+  margin-left: 2px;
+}
+
+.spc-plant-row {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.1s;
+}
+.spc-plant-row:last-child { border-bottom: none; }
+.spc-plant-row:hover { background: #f0f4ff; }
+
+.spc-plant-name-cell {
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.spc-plant-link {
+  background: none;
+  border: none;
+  color: #1D4ED8;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.spc-plant-link:hover { color: #1e40af; }
+
+.spc-plant-num {
+  padding: 7px 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.spc-plant-cpk {
+  font-weight: 700;
+  border-radius: 0;
+}
+
+.spc-plant-min-cpk {
+  background: #FF0000 !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.spc-plant-status {
+  padding: 7px 12px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* Pulsing red alert dot */
+@keyframes spc-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.6); }
+  70%  { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+
+.spc-alert-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #DC2626;
+  flex-shrink: 0;
+  animation: spc-pulse 1.4s infinite;
+}
+
+.spc-alert-dot-inline {
+  margin: 0 4px;
+  vertical-align: middle;
+}

@@ -1,0 +1,160 @@
+Create a new navigation menu and new page for a new dashboard called SPC Dashboard.
+DOnt hard code values. pick up dynamic values wherever possible
+
+## 📊 SPC Dashboard Structure — Complete Analysis
+
+### Dashboard Layout (C14:O31)
+
+**Header structure (2-tier):**
+- **Row 14**: Month labels merged across 2 columns each → `Oct 2025`, `Nov 2025`, `Dec 2025`, `Jan 2026`, `Feb 2026`, `Mar 2026`. These should be dynamically picked up from SPC Data worksheet from Month column
+- **Row 15**: Sub-headers under each month → `Avg Cp` (columns D, F, H, J, L, N) and `Avg Cpk` (columns E, G, I, K, M, O)
+- **Column C**: Supplier names + type (PPAP or Production)
+
+**Suppliers (5 total, each with 2 rows): the supplier should be picked from SPC Data worksheet from Supplier column**
+| Rows | Supplier | Color Code |
+|------|----------|------------|
+| 16–17 | Kun-Aero | Blue (#1D4ED8) |
+| 19–20 | PMI | Green (#059669) |
+| 22–23 | Team Metal | Amber (#D97706) |
+| 25–26 | Indo-MIM | Red (#DC2626) |
+| 28–29 | JJG-Aero | Purple (#8B5CF6) |
+
+Rows 18, 21, 24, 27 are **blank separator rows** between suppliers.
+
+**Rows 30–31** = Overall summary (PPAP / Production averages across all suppliers).
+
+---
+
+### KPI Cards (top section, C7:K10)
+| Cell | Formula | Meaning |
+|------|---------|---------|
+| C8 | `=IFERROR(AVERAGE('SPC Data'!$J$3:$J$200),0)` | Overall average Cpk across all records |
+| F8 | `=IFERROR(AVERAGE('SPC Data'!$I$3:$I$200),0)` | Overall average Cp across all records |
+| I8 | `=IFERROR(MIN('SPC Data'!$J$3:$J$200),0)` | Worst-case (minimum) Cpk in entire dataset |
+| K8 | `=COUNTA('SPC Data'!$B$3:$B$200)` | Total number of SPC records |
+
+---
+
+### Core Formula Explained (Plain English)
+
+**1. Avg Cp per Supplier per Month (e.g., D16)**
+```
+=IFERROR(AVERAGEIFS('SPC Data'!$I$3:$I$200,
+    'SPC Data'!$B$3:$B$200, "Kun-Aero",
+    'SPC Data'!$C$3:$C$200, "PPAP",
+    'SPC Data'!$A$3:$A$200, DATEVALUE("1 Oct 2025")), "—")
+```
+**In plain English:** *"Look at all Cp values in the SPC Data sheet. Average ONLY the ones where the Supplier is 'Kun-Aero', the Type is 'PPAP', and the Month equals October 2025. If no matching records exist, show a dash (—) instead of an error."*
+
+**2. Avg Cpk per Supplier per Month (e.g., E16)**
+```
+=IFERROR(AVERAGEIFS('SPC Data'!$J$3:$J$200,
+    'SPC Data'!$B$3:$B$200, "Kun-Aero",
+    'SPC Data'!$C$3:$C$200, "PPAP",
+    'SPC Data'!$A$3:$A$200, DATEVALUE("1 Oct 2025")), "—")
+```
+**In plain English:** *"Same logic as above, but average the Cpk values (column J) instead of Cp (column I)."*
+
+**3. Overall PPAP Average (e.g., M30)**
+```
+=AVERAGE(M16+M19+M22+M25+M28)/5
+```
+**In plain English:** *"Add up the Cpk values for all 5 suppliers' PPAP rows in this month, then divide by 5 to get the overall PPAP average."* ⚠️ Note: This formula has a quirk — it sums the values then divides by 5 inside AVERAGE(). Functionally it produces a simple mean of the 5 supplier values, but if a supplier shows "—" (text), the addition may produce errors.
+
+**4. Overall Production Average (e.g., M31)**
+```
+=AVERAGE(M17+M20+M23+M26+M29)/5
+```
+**In plain English:** *"Same as above but for Production rows — add all 5 suppliers' Production Cpk values and divide by 5."*
+
+---
+
+### Data Source Structure (`SPC Data` sheet)
+| Column | Field | Description |
+|--------|-------|-------------|
+| A | Month | Date stored as 1st of month (e.g., `DATEVALUE("1 Oct 2025")`) |
+| B | Supplier | Supplier name (Kun-Aero, PMI, Team Metal, Indo-MIM, JJG-Aero) |
+| C | PPAP/Production | Type classification |
+| D | Plant | Manufacturing plant location |
+| E | Part No | Part number |
+| F | K.C. dim UCL | Upper control limit for key characteristic dimension |
+| G | K.C. dim LCL | Lower control limit |
+| H | Insp. Method | Inspection method used |
+| I | **Cp** | Process capability index |
+| J | **Cpk** | Process capability index (centered) |
+
+---
+
+### Conditional Formatting (Heatmap Color Scale)
+The dashboard uses a **traffic-light heatmap** on each data cell:
+- 🟢 **Green shades** (#00B050 → #4AC738): Cp/Cpk ≥ 2.0 (excellent capability)
+- 🟡 **Yellow-green shades** (#CCEF10 → #EEFA05): Cp/Cpk 1.33–2.0 (acceptable)
+- 🟠 **Orange shades** (#FFA200 → #FFD800): Cp/Cpk 1.0–1.33 (marginal)
+- 🔴 **Red** (#FF0000): Cpk < 1.0 (not capable — needs immediate action)
+
+---
+
+### Professional Prompt to Recreate This as a Web Dashboard
+
+Here's a detailed prompt you can use with any web development AI/tool:
+
+---
+
+> **PROMPT: Build an SPC (Statistical Process Control) Cp/Cpk Dashboard**
+>
+> **Purpose:** Create a web-based dashboard that displays process capability indices (Cp and Cpk) broken down by supplier and month, used in aerospace/manufacturing quality management.
+>
+> **Data Source:**
+> - A table of SPC inspection records with columns: `Month` (date, 1st of month), `Supplier` (string), `Type` (PPAP or Production), `Plant`, `Part_No`, `UCL`, `LCL`, `Inspection_Method`, `Cp` (float), `Cpk` (float)
+> - 5 suppliers: Kun-Aero, PMI, Team Metal, Indo-MIM, JJG-Aero
+> - 2 types per supplier: PPAP (pre-production approval) and Production
+> - Data spans Oct 2025 – Mar 2026 (6 months)
+>
+> **Layout — 2 sections:**
+>
+> **Section 1: KPI Summary Cards (top row)**
+> Display 4 cards side by side:
+> 1. **Overall Avg Cpk** — Average of ALL Cpk values. Color: Indigo (#3730A3). Target ≥ 1.33
+> 2. **Overall Avg Cp** — Average of ALL Cp values. Color: Blue (#1D4ED8)
+> 3. **Min Cpk** — The single worst Cpk reading. Color: Red (#DC2626). Flags the riskiest part
+> 4. **Record Count** — Total # of SPC records. Color: Gray (#374151)
+>
+> **Section 2: Cp/Cpk by Supplier & Month (main grid)**
+> - **Rows:** Grouped by supplier (each supplier has 2 sub-rows: PPAP and Production), with a visual separator row between suppliers. Bottom 2 rows = "Overall PPAP" and "Overall Production" averages
+> - **Columns:** 6 month-groups (Oct 2025 through Mar 2026), each with 2 sub-columns: "Avg Cp" and "Avg Cpk"
+> - **Row labels (column C):** Supplier name + Type (e.g., "Kun-Aero · PPAP"), each supplier in a unique brand color
+> - **Cell values:** Conditional average of Cp or Cpk, filtered by supplier + type + month. If no data exists for that combination, show "—"
+> - **Overall rows (bottom):** Simple average of all 5 suppliers' values for that column (sum of 5 values ÷ 5)
+>
+> **Heatmap Conditional Formatting (critical feature):**
+> Apply a continuous color gradient to EVERY data cell based on its value:
+> - ≥ 2.0 → Dark green (#00B050) — Excellent
+> - 1.67–2.0 → Light green (#4AC738 to #8EDC23)
+> - 1.33–1.67 → Yellow-green (#CCEF10 to #EEFA05) — Meets minimum
+> - 1.0–1.33 → Orange (#FFA200 to #FFD800) — Marginal, needs monitoring
+> - < 1.0 → Red (#FF0000) — NOT CAPABLE, requires immediate action
+> - "—" (no data) → Light gray, no color
+>
+> The industry standard minimum for Cpk is **1.33** (aerospace standard). Values below this are flagged.
+>
+> **Styling:**
+> - Dark indigo header row (#3730A3) with white text for month labels
+> - Purple sub-headers (#7C3AED) for Cpk columns, blue (#4F46E5) for Cp columns
+> - Alternating row group backgrounds: #EEF2FF and #F5F3FF
+> - Font: Arial, 9–10pt for data, 8pt for headers
+> - Number format: 2 decimal places (0.00)
+> - Thin borders (#CBD5E1) between rows, colored borders on headers
+> - Each supplier label has a unique color: Blue, Green, Amber, Red, Purple
+>
+> **Interactivity (web enhancements beyond Excel):**
+> - Filter/dropdown to select specific suppliers
+> - Tooltip on hover showing the number of records that went into each average
+> - Click a cell to drill down to the individual part-level Cp/Cpk records
+> - Trend sparkline for each supplier showing Cpk over the 6 months
+> - Threshold line at 1.33 on any charts
+>
+> **Technology suggestion:** React + Tailwind CSS + a charting library (Chart.js or Recharts), or a BI tool like Power BI / Tableau. Data can come from a REST API or JSON file.
+
+---
+
+This prompt captures the complete structure, formulas, styling, and logic of your existing Excel dashboard and translates it into web development requirements. Want me to adjust anything or add more detail to any section?

@@ -284,6 +284,20 @@ async def upload_details(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
 
 
+@app.post("/api/upload-spc")
+async def upload_spc(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        result = data.parse_spc_data(contents)
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
 @app.get("/api/records")
 def get_records(
     session_id: str = Query(...),
