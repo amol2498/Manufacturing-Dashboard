@@ -18,4 +18,4 @@ dist/
 # Vite
 frontend/dist/
 frontend/.env
-node_modules/
+node_modules

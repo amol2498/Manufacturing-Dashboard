@@ -5,7 +5,10 @@ const NAV_ITEMS = [
   { label: 'WoW Comparison', path: '/wow-comparison' },
   { label: 'OTD Risk Intelligence Dashboard', path: '/otd-risk-dashboard' },
   { label: 'OTD Projections Dashboard', path: '/otd-projections-dashboard' },
+  { label: 'Stage Comparison', path: '/stage-comparison'},
+  {label : 'FPY Dashboard', path: './fpy-dashboard'},
   { label: 'Details', path: '/details' },
+
 ]
 
 export default function SiteHeader({ children }) {

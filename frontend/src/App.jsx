@@ -12,6 +12,8 @@ import OTDRiskDashboard from './components/OTDRiskDashboard'
 import DetailsDashboard from './components/DetailsDashboard'
 import WowComparisonDashboard from './components/WowComparisonDashboard'
 import OTDProjectionsDashboard from './components/OTDProjectionsDashboard'
+import StageComparisonDashboard from './components/StageComparisonDashboard'
+import FPYDashboard from './components/FPYDashboard'
 import UploadWidget from './components/UploadWidget'
 import { fetchDataVersion } from './api/client'
 import './App.css'
@@ -93,6 +95,8 @@ export default function App() {
       <Route path="/details" element={<DetailsDashboard />} />
       <Route path="/wow-comparison" element={<WowComparisonDashboard />} />
       <Route path="/otd-projections-dashboard" element={<OTDProjectionsDashboard />} />
+      <Route path="/stage-comparison" element={<StageComparisonDashboard />} />
+      <Route path="/fpy-dashboard" element={<FPYDashboard />} />
       <Route path="/" element={
         <div className="app">
           {/* ── Header ── */}

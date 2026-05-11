@@ -133,6 +133,24 @@ export async function uploadDetails(file) {
   return apiFetch(`${BASE_URL}/upload-details`, { method: 'POST', body: formData })
 }
 
+export async function uploadFpy(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-fpy`, { method: 'POST', body: formData })
+}
+
+export async function uploadStageComparison(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`${BASE_URL}/upload-stage-comparison`, { method: 'POST', body: formData })
+}
+
+export async function fetchStageComparisonFilter(suppliers) {
+  const params = new URLSearchParams()
+  suppliers.forEach(s => params.append('suppliers', s))
+  return apiFetch(`${BASE_URL}/stage-comparison-filter?${params.toString()}`)
+}
+
 export async function uploadOtdProjections(file) {
   const formData = new FormData()
   formData.append('file', file)

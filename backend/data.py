@@ -1275,3 +1275,233 @@ def get_records_data(session_id, month, stage, item_number=None, po_number=None)
         filtered_df = filtered_df[filtered_df["PO #"].astype(str).str.contains(po_number.strip(), case=False, na=False)]
 
     return filtered_df.fillna("").to_dict('records')
+
+
+# ── Stage Comparison ────────────────────────────────────────────────────────────
+
+# Each entry: (display_label, [lowercase keywords to match against col I])
+_STAGE_DEFS = [
+    ("NO RM / No RM",              ["no rm"]),
+    ("Yet to Start / Yet to launch", ["yet to start", "yet to launch"]),
+    ("Initial Stage",              ["initial stage", "inintial stage"]),
+    ("Intermediate Stage",         ["intermediate stage", "intermediate"]),
+    ("Final Stage",                ["final stage", "push out accepted"]),
+    ("FG",                         ["fg", "stock"]),
+    ("PPAP PO / NRE PO",           ["ppap po", "nre po"]),
+    ("Shipped",                    ["shipped"]),
+]
+
+# Column positions (0-indexed, matching Excel col letters)
+_SC_COL_SUPPLIER = 1   # B
+_SC_COL_STAGE    = 8   # I
+_SC_COL_MONTH    = 16  # Q
+_SC_COL_DELAY    = 13  # N
+
+# Module-level cache: holds the last-uploaded DataFrames so the filter endpoint
+# can re-compute without requiring a re-upload.
+_stage_cache: dict = {"cw_df": None, "lw_df": None}
+
+
+def set_stage_cache(cw_df, lw_df):
+    _stage_cache["cw_df"] = cw_df
+    _stage_cache["lw_df"] = lw_df
+
+
+def get_stage_cache():
+    return _stage_cache["cw_df"], _stage_cache["lw_df"]
+
+
+def _sc_series(df: pd.DataFrame, col_idx: int) -> pd.Series:
+    """Return a lowercased, stripped string Series for the given column index."""
+    if df.shape[1] <= col_idx:
+        return pd.Series(dtype=str)
+    return df.iloc[:, col_idx].astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+
+
+def _month_sort_key(label: str):
+    """Convert 'Dec 2025' → sortable tuple (2025, 12)."""
+    _months = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,
+               "jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
+    parts = label.strip().split()
+    if len(parts) == 2:
+        m = _months.get(parts[0].lower(), 0)
+        try:
+            y = int(parts[1])
+        except ValueError:
+            y = 0
+        return (y, m)
+    return (0, 0)
+
+
+def _sc_supplier_series(df: pd.DataFrame) -> pd.Series:
+    """Return stripped supplier Series from column B (index 1)."""
+    return _sc_series(df, _SC_COL_SUPPLIER)
+
+
+def get_stage_suppliers(lw_df: pd.DataFrame) -> list:
+    """Return sorted unique supplier names from LW_Data column B."""
+    sup = _sc_supplier_series(lw_df)
+    unique = sorted({v for v in sup.unique() if v and v.lower() not in ('', 'nan', 'none')})
+    return unique
+
+
+def compute_stage_comparison(cw_df: pd.DataFrame, lw_df: pd.DataFrame,
+                              suppliers=None) -> dict:
+    """Build the Stage Pipeline Comparison table (LW vs CW, month-wise).
+
+    suppliers: if provided, only rows whose column-B value is in this list are counted.
+
+    Returns:
+        {
+          "months": ["Dec 2025", "Feb 2026", ...],   # sorted chronologically
+          "suppliers": [...],                         # all unique suppliers from LW
+          "rows": [
+            {
+              "stage": "NO RM / No RM",
+              "data": {
+                "Dec 2025": {
+                  "lw": {"lines": 0, "delays": 0, "del_pct": 0},
+                  "cw": {"lines": 0, "delays": 0, "del_pct": 0}
+                },
+                ...
+              }
+            },
+            ...
+            {"stage": "TOTAL", "data": {...}}
+          ]
+        }
+    """
+    def _build(df):
+        sup_s    = _sc_supplier_series(df)
+        stage_s  = _sc_series(df, _SC_COL_STAGE).str.lower()
+        month_s  = _sc_series(df, _SC_COL_MONTH)
+        delay_s  = _sc_series(df, _SC_COL_DELAY).str.lower()
+        if suppliers:
+            sup_set = set(suppliers)
+            mask = sup_s.isin(sup_set)
+            return stage_s[mask].reset_index(drop=True), month_s[mask].reset_index(drop=True), delay_s[mask].reset_index(drop=True)
+        return stage_s, month_s, delay_s
+
+    all_suppliers = get_stage_suppliers(lw_df)
+
+    lw_stage, lw_month, lw_delay = _build(lw_df)
+    cw_stage, cw_month, cw_delay = _build(cw_df)
+
+    # Collect all unique month labels from both sheets (non-blank, non-'nan')
+    all_months = set()
+    for ms in (lw_month, cw_month):
+        for v in ms.unique():
+            v = str(v).strip()
+            if v and v.lower() not in ('', 'nan', 'none'):
+                all_months.add(v)
+    months_sorted = sorted(all_months, key=_month_sort_key)
+
+    def _count(stage_s, month_s, delay_s, keywords, month_label):
+        month_mask  = month_s == month_label
+        stage_mask  = stage_s.isin(keywords)
+        lines  = int((month_mask & stage_mask).sum())
+        delays = int((month_mask & stage_mask & (delay_s == 'delay')).sum())
+        del_pct = round(delays / lines * 100, 1) if lines > 0 else 0.0
+        return {"lines": lines, "delays": delays, "del_pct": del_pct}
+
+    rows = []
+    for label, keywords in _STAGE_DEFS:
+        kw_lower = [k.lower() for k in keywords]
+        row_data = {}
+        for m in months_sorted:
+            row_data[m] = {
+                "lw": _count(lw_stage, lw_month, lw_delay, kw_lower, m),
+                "cw": _count(cw_stage, cw_month, cw_delay, kw_lower, m),
+            }
+        rows.append({"stage": label, "data": row_data})
+
+    # TOTAL row
+    total_data = {}
+    for m in months_sorted:
+        lw_lines  = sum(r["data"][m]["lw"]["lines"]  for r in rows)
+        lw_delays = sum(r["data"][m]["lw"]["delays"] for r in rows)
+        cw_lines  = sum(r["data"][m]["cw"]["lines"]  for r in rows)
+        cw_delays = sum(r["data"][m]["cw"]["delays"] for r in rows)
+        total_data[m] = {
+            "lw": {"lines": lw_lines, "delays": lw_delays,
+                   "del_pct": round(lw_delays / lw_lines * 100, 1) if lw_lines > 0 else 0.0},
+            "cw": {"lines": cw_lines, "delays": cw_delays,
+                   "del_pct": round(cw_delays / cw_lines * 100, 1) if cw_lines > 0 else 0.0},
+        }
+    rows.append({"stage": "TOTAL", "data": total_data})
+
+    return {"months": months_sorted, "suppliers": all_suppliers, "rows": rows}
+
+
+# ── FPY Dashboard ───────────────────────────────────────────────────────────────
+
+FPY_SUPPLIERS = [
+    "Indo-MIM", "JK Maini", "JJG-Aero", "Wipro",
+    "SFO", "Kun_Aero", "PMI", "Rapid", "Team Metal", "CCS",
+]
+
+_FPY_COL_DATE     = 0   # A
+_FPY_COL_SUPPLIER = 1   # B
+_FPY_COL_STAGE    = 2   # C
+_FPY_COL_FPY      = 9   # J  (decimal: 0.988 = 98.8%)
+
+
+def parse_fpy_sheet(file_bytes: bytes) -> pd.DataFrame:
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+    return _sheet_to_df(wb['FPY Data'])
+
+
+def compute_fpy_table(df: pd.DataFrame) -> dict:
+    date_raw = df.iloc[:, _FPY_COL_DATE]
+    sup_s    = df.iloc[:, _FPY_COL_SUPPLIER].astype(str).str.replace('\xa0', ' ', regex=False).str.strip()
+    stage_s  = df.iloc[:, _FPY_COL_STAGE].astype(str).str.strip().str.lower()
+    fpy_s    = pd.to_numeric(df.iloc[:, _FPY_COL_FPY], errors='coerce').fillna(0)
+
+    dates = pd.to_datetime(date_raw, errors='coerce').dt.normalize()
+
+    unique_dates = sorted(d for d in dates.dropna().unique() if not pd.isna(d))
+
+    def _fmt(dt):
+        return pd.Timestamp(dt).strftime('%b %Y')
+
+    months    = [_fmt(d) for d in unique_dates]
+    month_map = {_fmt(d): pd.Timestamp(d) for d in unique_dates}
+
+    # Summary stats (whole sheet, all suppliers)
+    valid   = fpy_s > 0
+    overall_avg  = round(float(fpy_s[valid].mean()) * 100, 1)          if valid.any()                        else None
+    ppap_avg     = round(float(fpy_s[valid & (stage_s == 'ppap')].mean()) * 100, 1) \
+                   if (valid & (stage_s == 'ppap')).any()               else None
+    prod_avg     = round(float(fpy_s[valid & (stage_s == 'production')].mean()) * 100, 1) \
+                   if (valid & (stage_s == 'production')).any()         else None
+    total_records = len(df)
+
+    rows = []
+    for supplier in FPY_SUPPLIERS:
+        sup_mask = sup_s.str.lower() == supplier.lower()
+        row_data = {}
+        for m, dt in month_map.items():
+            date_mask = dates == dt
+            ppap_idx = sup_mask & date_mask & (stage_s == 'ppap') & (fpy_s > 0)
+            prod_idx = sup_mask & date_mask & (stage_s == 'production') & (fpy_s > 0)
+
+            ppap_v = fpy_s[ppap_idx]
+            prod_v = fpy_s[prod_idx]
+
+            row_data[m] = {
+                "ppap":       round(float(ppap_v.mean()) * 100, 1) if len(ppap_v) > 0 else None,
+                "production": round(float(prod_v.mean()) * 100, 1) if len(prod_v) > 0 else None,
+            }
+        rows.append({"supplier": supplier, "data": row_data})
+
+    return {
+        "months":    months,
+        "suppliers": FPY_SUPPLIERS,
+        "rows":      rows,
+        "summary": {
+            "overall_avg":   overall_avg,
+            "ppap_avg":      ppap_avg,
+            "production_avg": prod_avg,
+            "total_records": total_records,
+        },
+    }

@@ -196,6 +196,48 @@ async def upload_otd_risk(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
 
 
+@app.post("/api/upload-stage-comparison")
+async def upload_stage_comparison(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        cw_df, lw_df = data.parse_otd_risk_sheets(contents)
+        data.set_stage_cache(cw_df, lw_df)
+        return data.compute_stage_comparison(cw_df, lw_df)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
+@app.get("/api/stage-comparison-filter")
+async def stage_comparison_filter(suppliers: List[str] = Query(default=[])):
+    cw_df, lw_df = data.get_stage_cache()
+    if cw_df is None:
+        raise HTTPException(status_code=400, detail="No file uploaded yet")
+    try:
+        return data.compute_stage_comparison(cw_df, lw_df, suppliers=suppliers or None)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to filter: {exc}")
+
+
+@app.post("/api/upload-fpy")
+async def upload_fpy(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are supported")
+    try:
+        contents = await file.read()
+        df = data.parse_fpy_sheet(contents)
+        return data.compute_fpy_table(df)
+    except KeyError:
+        raise HTTPException(status_code=422, detail="Sheet 'FPY Data' not found in the uploaded file")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {exc}")
+
+
 @app.post("/api/upload-wow-comparison")
 async def upload_wow_comparison(file: UploadFile = File(...)):
     if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
